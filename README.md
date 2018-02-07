@@ -5,5 +5,3 @@ Files a-distts.ads and a-distts.adb, inside directory "runtime", provide the spe
 
 
 <a href="https://zenodo.org/badge/latestdoi/120666975"><img src="https://zenodo.org/badge/120666975.svg" alt="DOI"></a>
-
-DOI: 10.5281 - https://zenodo.org/badge/latestdoi/120666975
