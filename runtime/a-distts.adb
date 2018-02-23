@@ -22,22 +22,29 @@ with System.BB.Threads.Queues;
 
 package body Ada.Dispatching.TTS is
    use System.BB.Threads;
-   
-   -- Lower bound of the measured overhead on a STM32F4 Discovery
+
+   --  Conservative bound of measured overhead on a STM32F4 Discovery
+   --  Since release jitter is very predictable in this platform (between
+   --  23 and 24 us) we charge that overhead at the end of the slot, by
+   --  effectively advancing the slot start time by the Overhead time.
+   --  This reduces the release jitter even further for TT tasks, to about 3 us
    Overhead : constant Time_Span := Microseconds (20);
 
    --  Run time TT work info
    type Work_Control_Block is record
-      Release_Point   : Suspension_Object;
-      Has_Completed   : Boolean   := True;
-      Is_Waiting      : Boolean   := False;
-      Is_Sliced       : Boolean   := False; --  Work is on a sliced sequence
-      Work_Thread_Id  : Thread_Id := Null_Thread_Id;
-      Last_Release    : Time      := Time_Last;
+      Has_Completed   : Boolean   := True;     --  Last release has completed
+      Is_Waiting      : Boolean   := False;    --  Task is waiting for release
+      Is_Sliced       : Boolean   := False;    --  Work is on a sliced sequence
+      Work_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlaying thread id
+      --  This ome is useful for jitter instrumentation
+      Last_Release    : Time      := Time_Last; -- Time of last release
    end record;
 
    --  Array of Work_Control_Blocks
    WCB : array (Regular_Work_Id) of Work_Control_Block;
+
+   --  Array of suspension objects for TT tasks to wait for activation
+   Release_Point : array (Regular_Work_Id) of Suspension_Object;
 
    ----------------
    --  Set_Plan  --
@@ -64,7 +71,7 @@ package body Ada.Dispatching.TTS is
       Time_Triggered_Scheduler.Prepare_For_Activation (Work_Id);
 
       --  Suspend until the next slot for Work_Id starts
-      Suspend_Until_True (WCB (Work_Id).Release_Point);
+      Suspend_Until_True (Release_Point (Work_Id));
 
       --  Scheduler updated Last_Release when it released the worker task
       When_Was_Released := WCB (Work_Id).Last_Release;
@@ -130,6 +137,10 @@ package body Ada.Dispatching.TTS is
          --  Start new plan now if none is set. Otherwise, the scheduler will
          --  change to the Next_Plan at the end of the next mode change slot
          if Current_Plan = null then
+            --  The extra millisecond delay is to bypass the exception we get
+            --  if we don't add it. We still have to debug this. Note that the
+            --  delay only affects the first mode change, because Current_Plan
+            --  is null.
             Change_Plan (Now + Milliseconds (1));
             return;
          end if;
@@ -138,7 +149,7 @@ package body Ada.Dispatching.TTS is
          --  from ET tasks) and enforce the mode change at the end of it.
          --  Note that this point is reached only if there is currently
          --  a plan set, hence Current_Plan is not null
-         if Current_Plan (Current_Slot_Index).Work_Id = Mode_Change_Slot then
+         if Current_Plan (Current_Slot_Index).Kind = Mode_Change_Slot then
             Change_Plan (Next_Slot_Release);
          end if;
 
@@ -178,16 +189,21 @@ package body Ada.Dispatching.TTS is
       ---------------------
 
       procedure Continue_Sliced is
-         Current_Work_Id : constant Any_Work_Id :=
-           Current_Plan (Current_Slot_Index).Work_Id;
+         Current_Slot : constant Time_Slot :=
+           Current_Plan (Current_Slot_Index);
       begin
-         if WCB (Current_Work_Id).Work_Thread_Id /= Thread_Self then
+         if Current_Slot.Kind /= TT_Work_Slot then
             raise Program_Error
-              with ("Running Task does not correspond to Work_Id " &
-                      Current_Work_Id'Image);
+              with ("Continue_Sliced called from a non-TT task");
          end if;
 
-         WCB (Current_Work_Id).Is_Sliced := True;
+         if WCB (Current_Slot.Work_Id).Work_Thread_Id /= Thread_Self then
+            raise Program_Error
+              with ("Running Task does not correspond to Work_Id " &
+                      Current_Slot.Work_Id'Image);
+         end if;
+
+         WCB (Current_Slot.Work_Id).Is_Sliced := True;
       end Continue_Sliced;
 
       --------------------
@@ -195,19 +211,25 @@ package body Ada.Dispatching.TTS is
       --------------------
 
       procedure Leave_TT_Level (Work_Id : Regular_Work_Id) is
-         Current_Work_Id : constant Any_Work_Id :=
-           Current_Plan (Current_Slot_Index).Work_Id;
+         Current_Slot : constant Time_Slot :=
+           Current_Plan (Current_Slot_Index);
       begin
-         if Current_Work_Id /= Work_Id then
+         if Current_Slot.Kind /= TT_Work_Slot then
             raise Program_Error
-              with ("Incorrect Work_Id " & Work_Id'Image & " /= " &
-                      Current_Work_Id'Image);
+              with ("Leave_TT_Level called from a non-TT task");
          end if;
 
-         if WCB (Current_Work_Id).Work_Thread_Id /= Thread_Self then
+         if Current_Slot.Work_Id /= Work_Id then
             raise Program_Error
-              with ("Running Task does not correspond to Work_Id " &
-                      Current_Work_Id'Image);
+              with ("Leave_TT_Level called wIth Work_Id " & Work_Id'Image &
+                      " during a slot reserved for " &
+                      Current_Slot.Work_Id'Image);
+         end if;
+
+         if WCB (Current_Slot.Work_Id).Work_Thread_Id /= Thread_Self then
+            raise Program_Error
+              with ("Leave_TT_Level called from Work_Id different to " &
+                      Current_Slot.Work_Id'Image);
          end if;
 
          WCB (Work_Id).Has_Completed := True;
@@ -221,16 +243,21 @@ package body Ada.Dispatching.TTS is
         (Work_Id : Regular_Work_Id;
          Must_Leave : out Boolean)
       is
-         Current_Work_Id : constant Any_Work_Id :=
-           Current_Plan (Current_Slot_Index).Work_Id;
+         Current_Slot : constant Time_Slot :=
+           Current_Plan (Current_Slot_Index);
       begin
+         if Current_Slot.Kind /= TT_Work_Slot then
+            raise Program_Error
+              with ("Skip_Next_Slot called from a non-TT task");
+         end if;
+
          if WCB (Work_Id).Work_Thread_Id /= Thread_Self then
             raise Program_Error
               with ("Running Task does not correspond to Work_Id " &
                       Work_Id'Image);
          end if;
 
-         Must_Leave := (Current_Work_Id = Work_Id);
+         Must_Leave := (Current_Slot.Work_Id = Work_Id);
 
          WCB (Work_Id).Is_Sliced := True;
 
@@ -258,59 +285,71 @@ package body Ada.Dispatching.TTS is
 
       procedure NS_Handler (Event : in out Timing_Event) is
          pragma Unreferenced (Event);
-         Current_Work_Id   : Any_Work_Id;
+         Current_Slot      : Time_Slot;
+         Current_WCB       : Work_Control_Block;
          Current_Thread_Id : Thread_Id;
          Now               : Time;
       begin
+
+         --  This is the current time, according to the plan
          Now := Next_Slot_Release;
 
-         --  Check for overrun in the finishing slot.
+         --------------------------
+         --  PROCESS ENDING SLOT --
+         --------------------------
+
+         --  Check for overrun in the ending slot, if it is a TT_Work_Slot.
          --  If this happens to be the first slot after a plan change, then
-         --  an overrun from the last work of the old plan would have been
-         --  detected at the start of the mode change slot.
-         Current_Work_Id := Current_Plan (Current_Slot_Index).Work_Id;
+         --  we come from a mode-change slot, so there is no overrun to check,
+         --  because it was checked at the start of that mode-change slot
 
-         if Current_Work_Id in Regular_Work_Id and then
-           not WCB (Current_Work_Id).Has_Completed
-         then
+         Current_Slot := Current_Plan (Current_Slot_Index);
 
-            Current_Thread_Id := WCB (Current_Work_Id).Work_Thread_Id;
+         --  Nothing to be done unless the endoing slot was a TT_Work_Slot
+         if Current_Slot.Kind = TT_Work_Slot then
 
-            --  Thread_Self is the currently running thread on this CPU
-            if Current_Thread_Id /= Thread_Self then
-               raise Program_Error
-                 with ("Running Task does not correspond to Work_Id " &
-                         Current_Work_Id'Image);
-            end if;
+            Current_WCB := WCB (Current_Slot.Work_Id);
 
-            if WCB (Current_Work_Id).Is_Sliced then
-               --  Action: Suspend
-               --  We perform almost the same actions as in
-               --    System.BB.Threads.Sleep
+            if not Current_WCB.Has_Completed then
+               --  Possible overrun detected, unless task is running sliced.
+               --  First check that all is going well
+               Current_Thread_Id := Current_WCB.Work_Thread_Id;
 
-               --  Update status and extract from the list of ready threads
-               Current_Thread_Id.State := Suspended;
-               Queues.Extract (Current_Thread_Id);
+               --  Thread_Self is the currently running thread on this CPU.
+               --  If this assertion fails, the running TT task is using a
+               --  wrong slot, which should never happen
+               pragma Assert (Current_Thread_Id = Thread_Self);
 
-               --  Context switch is performed after executing TE handler
+               --  Check whether the task is running sliced or this is
+               --  a real overrun situation
+               if Current_WCB.Is_Sliced then
+                  --  Action: Suspend
+                  --  (Inspired by System.BB.Threads.Sleep)
+                  --  Change thread state to suspended and extract the
+                  --  thread from the list of ready threads
 
-            else
-               --  Action: PE
-               --  Overrun detected, raise PE
-               raise Program_Error with ("Overrun detected in work " &
-                                           Current_Work_Id'Image);
+                  Current_Thread_Id.State := Suspended;
+                  Queues.Extract (Current_Thread_Id);
+                  --  Context switch occurs after executing this handler
+
+               else
+                  --  Overrun detectd, raise Program_Error
+                  raise Program_Error with ("Overrun in TT task " &
+                                              Current_Slot.Work_Id'Image);
+               end if;
+
             end if;
 
          end if;
 
-         -----------------
-         -- SLOT SWITCH --
-         -----------------
+         ---------------------------
+         -- PROCESS STARTING SLOT --
+         ---------------------------
 
          --  Update current slot index
          Current_Slot_Index := Next_Slot_Index;
 
-         --  Compute next slot index
+         --  Obtain next slot index. The plan is repeated circularly
          if Next_Slot_Index < Current_Plan.all'Last then
             Next_Slot_Index := Next_Slot_Index + 1;
          else
@@ -321,103 +360,109 @@ package body Ada.Dispatching.TTS is
          Next_Slot_Release := Next_Slot_Release +
            Current_Plan (Current_Slot_Index).Slot_Duration;
 
-         --  Obtain current work id
-         Current_Work_Id := Current_Plan (Current_Slot_Index).Work_Id;
+         --  Obtain current slot
+         Current_Slot := Current_Plan (Current_Slot_Index);
 
-         --  Process current slot actions
+         case Current_Slot.Kind is
 
-         --  Mode change slot case --
+            ----------------------------------
+            --  Process a Mode_Change_Slot  --
+            ----------------------------------
+            when Mode_Change_Slot =>
 
-         if Current_Work_Id = Mode_Change_Slot then
-            if Next_Plan /= null then
-               --  There's a pending plan change.
-               --   It takes effect at the end of the MC slot
-               Change_Plan (Next_Slot_Release);
-            else
-               --  Set the handler for the next scheduling point
-               NS_Event.Set_Handler (Next_Slot_Release - Overhead,
-                                     NS_Handler_Access);
-            end if;
-
-         --  Empty slot case  --
-
-         elsif Current_Work_Id = Empty_Slot then
-            --  Set the handler for the next scheduling point
-            NS_Event.Set_Handler (Next_Slot_Release - Overhead,
-                                  NS_Handler_Access);
-
-         --  Regular slot case --
-
-         elsif Current_Work_Id in Regular_Work_Id then
-
-            Current_Thread_Id := WCB (Current_Work_Id).Work_Thread_Id;
-
-            --  Check whether the work's task has already registered.
-            --  Raise PE otherwise
-            if Current_Thread_Id = Null_Thread_Id then
-               raise Program_Error
-                 with ("Task not registered for Work_Id " &
-                         Current_Work_Id'Image);
-            end if;
-
-            --  Store in the WCN if the new starting slot is a
-            --  continuation slot
-
-            --  Release task in charge of current work id
-            if WCB (Current_Work_Id).Has_Completed then
-
-               if WCB (Current_Work_Id).Is_Sliced then
-                  null;
-               elsif WCB (Current_Work_Id).Is_Waiting then
-                  --  Task is waiting in Wait_For_Activation
-
-                  --  Support for release time to measure
-                  --    release jitter of TT tasks
-
-                  --  Continuation slots do not update the release time
-                  WCB (Current_Work_Id).Last_Release := Now;
-
-                  --  The worker is now released and starts running
-                  WCB (Current_Work_Id).Has_Completed := False;
-                  WCB (Current_Work_Id).Is_Waiting := False;
-
-                  Set_True (WCB (Current_Work_Id).Release_Point);
-               elsif Current_Plan (Current_Slot_Index).Is_Optional then
-                  null;
+               if Next_Plan /= null then
+                  --  There's a pending plan change.
+                  --   It takes effect at the end of the MC slot
+                  Change_Plan (Next_Slot_Release);
                else
-                  --  Task has invoked Leave_TT_Level
-                  raise Program_Error
-                    with ("Task is late to next activation for Work_Id " &
-                            Current_Work_Id'Image);
+                  --  Set the handler for the next scheduling point
+                  NS_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                        NS_Handler_Access);
                end if;
 
-            else
-               --  The thread has been suspended at the end of a previous
-               --  continuation slot, so resume it and let it continue
+            -----------------------------
+            --  Process an Empty_Slot  --
+            -----------------------------
+            when Empty_Slot =>
 
-               pragma Assert (WCB (Current_Work_Id).Is_Sliced);
+               --  Just set the handler for the next scheduling point
+               NS_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                     NS_Handler_Access);
 
-               --  Update status
-               Current_Thread_Id.State := Runnable;
+            -----------------------------
+            --  Process a TT_Work_Slot --
+            -----------------------------
+            when TT_Work_Slot =>
 
-               --  Insert the thread at the tail of its active priority
-               --  so that the thread will resume execution.
-               Queues.Insert (Current_Thread_Id);
+               Current_WCB := WCB (Current_Slot.Work_Id);
+               Current_Thread_Id := Current_WCB.Work_Thread_Id;
 
-            end if;
+               --  Check whether the TT task has already registered, i.e.,
+               --  it has called Wait_For_Activation. Raise PE otherwise
+               if Current_Thread_Id = Null_Thread_Id then
+                  raise Program_Error
+                    with ("No TT task has registered for Work_Id " &
+                            Current_Slot.Work_Id'Image);
+               end if;
 
-            -- Common actions --
+               --  Check what needs be done to the TT task of the new slot
+               if Current_WCB.Has_Completed then
 
-            WCB (Current_Work_Id).Is_Sliced :=
-              Current_Plan (Current_Slot_Index).Is_Continuation;
+                  --  The TT task has abandoned the TT level or has called
+                  --    Wait_For_Activation
 
-            --  Set the handler for the next scheduling point
-            NS_Event.Set_Handler (Next_Slot_Release - Overhead,
-                                  NS_Handler_Access);
+                  if Current_WCB.Is_Sliced then
+                     --  The completed TT task was running sliced
+                     null;
 
-         else
-            raise Program_Error with "Invalid Work Id";
-         end if;
+                  elsif Current_WCB.Is_Waiting then
+                     --  TT task is waiting in Wait_For_Activation
+
+                     --  Update WCB and release TT task
+                     WCB (Current_Slot.Work_Id).Last_Release := Now;
+                     WCB (Current_Slot.Work_Id).Has_Completed := False;
+                     WCB (Current_Slot.Work_Id).Is_Waiting := False;
+                     Set_True (Release_Point (Current_Slot.Work_Id));
+
+                  elsif Current_Slot.Is_Optional then
+                     --  If the slot is optional, it is not an error if the TT
+                     --    task has not invoked Wait_For_Activation
+                     null;
+
+                  else
+                     --  Task is not waiting for its next activation.
+                     --  It must have abandoned the TT Level
+                     raise Program_Error
+                       with ("Task is late to next activation for Work_Id " &
+                               Current_Slot.Work_Id'Image);
+                  end if;
+
+               else
+                  --  The TT task has not completed and no overrun has been
+                  --    detected so far, so it must be running sliced and is
+                  --    currently held from a previous exhausted slot, so it
+                  --    must be resumed
+                  pragma Assert (WCB (Current_Slot.Work_Id).Is_Sliced);
+
+                  --  Change thread state to runnable and insert it at the tail
+                  --    of its active priority, which here implies that the
+                  --    thread will be the next to execute
+                  Current_Thread_Id.State := Runnable;
+                  Queues.Insert (Current_Thread_Id);
+
+               end if;
+
+               --  Common actions to process the new slot --
+               --  The work inherits its Is_Sliced condition from the
+               --  Is_Continuation property of the new slot
+               WCB (Current_Slot.Work_Id).Is_Sliced :=
+                 Current_Plan (Current_Slot_Index).Is_Continuation;
+
+               --  Set timing event for the next scheduling point
+               NS_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                     NS_Handler_Access);
+
+         end case;
       end NS_Handler;
 
    end Time_Triggered_Scheduler;

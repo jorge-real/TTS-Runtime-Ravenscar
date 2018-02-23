@@ -11,9 +11,8 @@
 --
 ------------------------------------------------------------
 
-private with Ada.Real_Time.Timing_Events, System;
-
 with Ada.Real_Time;
+private with Ada.Real_Time.Timing_Events, System;
 
 generic
 
@@ -21,34 +20,25 @@ generic
 
 package Ada.Dispatching.TTS is
 
---     --  Work identifier types
---     type Any_Work_Id is new Integer range Integer'First .. Number_Of_Work_IDs;
---     subtype Special_Work_Id is Any_Work_Id range Any_Work_Id'First .. 0;
---     subtype Regular_Work_Id is Any_Work_Id range 1 .. Any_Work_Id'Last;
-
    --  Slot types
-   type Any_Slot_Id is new Integer range Integer'First .. Number_Of_Work_IDs;
-   subtype Special_Slot_Id is Any_Slot_Id range Any_Slot_Id'First .. 0;
-   subtype Regular_Slot_Id is Any_SLot_Id range 1 .. Any_Slot_Id'Last;
+   type Kind_Of_Slot is (TT_Work_Slot, Empty_Slot, Mode_Change_Slot);
 
-   --  The Work_ID of a TT task is a positive integer and a regular slot is
-   --  represented by a positive as well. The following declaration is for
-   --  clarity when using the Work_ID as parameters to the package-provided
-   --  subprograms
-   subtype Regular_Work_Id is Regular_Slot_Id;
+   --  TT tasks use a Work_Id of this type to identify themselves
+   --  when they call the scheduler
+   type Regular_Work_Id is new Integer range 1 .. Number_Of_Work_IDs;
 
-
-
-   --  Special IDs
-   Empty_Slot       : constant Special_Slot_Id;
-   Mode_Change_Slot : constant Special_Slot_Id;
-
-   --  A time slot in the TT plan
-   type Time_Slot is record
-      Slot_Duration   : Ada.Real_Time.Time_Span;
-      Slot_Id         : Any_Slot_Id;
-      Is_Continuation : Boolean := False;
-      Is_Optional     : Boolean := False;
+   --  A time slot in the TT plan. We use a variant record because different
+   --  kinds of slots require different types of information
+   type Time_Slot (Kind : Kind_Of_Slot := TT_Work_Slot) is record
+      Slot_Duration : Ada.Real_Time.Time_Span;
+      case Kind is
+         when TT_Work_Slot =>
+            Work_Id         : Regular_Work_Id;
+            Is_Continuation : Boolean := False;
+            Is_Optional     : Boolean := False;
+         when others =>
+            null;
+      end case;
    end record;
 
    --  Types representing/accessing TT plans
@@ -82,9 +72,6 @@ package Ada.Dispatching.TTS is
      (Work_Id : Regular_Work_Id);
 
 private
-
-   Empty_Slot       : constant Special_Slot_Id :=  0;
-   Mode_Change_Slot : constant Special_Slot_Id := -1;
 
    protected Time_Triggered_Scheduler
      with Priority => System.Interrupt_Priority'Last is
