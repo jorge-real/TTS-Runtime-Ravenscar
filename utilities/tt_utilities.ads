@@ -24,19 +24,12 @@ package TT_Utilities is
       --  Ditto for procedure Set_Plan
    procedure Set_Plan (TTP : Time_Triggered_Plan_Access) renames TTS.Set_Plan;
 
+   --  Access type to parameterless action procedures
    type Task_Actions is not null access procedure;
 
-   ----------------------------------------------
-   --           FUNCTION NEW_SLOT              --
-   --  Auxiliary function for building plans.  --
-   --  In effect, a constructor of Time_Slots  --
-   ----------------------------------------------
---     function New_Slot (Kind : Kind_Of_Slot;
---                        MS  : Natural;
---                        Work_Id : TT_Work_Id := TT_Work_Id'Last;
---                        Is_Continuation : Boolean := False;
---                        Is_Optional : Boolean := False) return Time_Slot;
-
+   ------------------------------------------------------------
+   --  Time_Slot constructor functions for building TT plans --
+   ------------------------------------------------------------
    function A_TT_Work_Slot (Slot_Duration_MS  : Natural;
                             Work_Id : TT_Work_Id := TT_Work_Id'Last;
                             Is_Continuation : Boolean := False;
@@ -54,7 +47,7 @@ package TT_Utilities is
    task type Simple_TT_Task
      (Work_Id : TT_Work_Id;
       Actions : Task_Actions)
-     with Priority => System.Priority'First;
+     with Priority => System.Priority'Last - 1;
 
    ---------------------------------
    --   INITIAL-FINAL TT TASK     --
@@ -66,7 +59,7 @@ package TT_Utilities is
      (Work_Id      : TT_Work_Id;
       Initial_Part : Task_Actions;
       Final_Part   : Task_Actions)
-     with Priority => System.Priority'First;
+     with Priority => System.Priority'Last - 1;
 
    ----------------------------------------------------
    --  INITIAL and MANDATORY sliced - FINAL TT TASK  --
@@ -78,6 +71,6 @@ package TT_Utilities is
       Initial_Part          : Task_Actions;
       Mandatory_Sliced_Part : Task_Actions;
       Final_Part            : Task_Actions)
-     with Priority => System.Priority'First;
+     with Priority => System.Priority'Last - 1;
 
 end TT_Utilities;
