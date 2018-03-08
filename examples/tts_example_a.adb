@@ -77,7 +77,7 @@ package body TTS_Example_A is
 
    --  Auxiliary for printing times --
    function Now (Current : Time) return String is
-     (Duration'Image (To_Duration (Current - Epoch)));
+     (Duration'Image ( To_Duration (Current - Epoch) * 1000) & " ms.");
 
    --  Actions of sequence initialisations
    procedure First_Seq_Start is  --  Simple_TT task with ID = 1
