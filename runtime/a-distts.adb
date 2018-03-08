@@ -32,19 +32,19 @@ package body Ada.Dispatching.TTS is
 
    --  Run time TT work info
    type Work_Control_Block is record
-      Has_Completed   : Boolean   := True;     --  Last release has completed
+      Has_Completed   : Boolean   := True;     --  TT part has completed
       Is_Waiting      : Boolean   := False;    --  Task is waiting for release
-      Is_Sliced       : Boolean   := False;    --  Work is on a sliced sequence
-      Work_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlaying thread id
-      --  This ome is useful for jitter instrumentation
+      Is_Sliced       : Boolean   := False;    --  Task is in a sliced sequence
+      Work_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlying thread id
+      --  This one is just for jitter instrumentation
       Last_Release    : Time      := Time_Last; -- Time of last release
    end record;
 
    --  Array of Work_Control_Blocks
-   WCB : array (Regular_Work_Id) of Work_Control_Block;
+   WCB : array (TT_Work_Id) of aliased Work_Control_Block;
 
    --  Array of suspension objects for TT tasks to wait for activation
-   Release_Point : array (Regular_Work_Id) of Suspension_Object;
+   Release_Point : array (TT_Work_Id) of Suspension_Object;
 
    ----------------
    --  Set_Plan  --
@@ -59,13 +59,12 @@ package body Ada.Dispatching.TTS is
    --  Wait_For_Activation --
    --------------------------
    procedure Wait_For_Activation
-     (Work_Id : Regular_Work_Id;
+     (Work_Id : TT_Work_Id;
       When_Was_Released : out Time) is
    begin
 
-      --  It raises its own priority, before getting blocked,
-      --  to recover the correct priority when this task has previuosly
-      --  invoked Leave_TT_Level
+      --  Raise own priority, before getting blocked. This is to recover the TT
+      --  priority when the calling task has previuosly called Leave_TT_Level
       Set_Priority (System.Priority'Last);
 
       Time_Triggered_Scheduler.Prepare_For_Activation (Work_Id);
@@ -91,15 +90,9 @@ package body Ada.Dispatching.TTS is
    -- Leave_TT_Level --
    --------------------
 
-   procedure Leave_TT_Level
-     (Work_Id : Regular_Work_Id) is
-      Base_Priority : System.Priority;
+   procedure Leave_TT_Level is
    begin
-      Time_Triggered_Scheduler.Leave_TT_Level (Work_Id);
-
-      Base_Priority := WCB (Work_Id).Work_Thread_Id.Base_Priority;
-      Set_Priority (Base_Priority);
-
+      Time_Triggered_Scheduler.Leave_TT_Level;
    end Leave_TT_Level;
 
    --------------------
@@ -107,13 +100,13 @@ package body Ada.Dispatching.TTS is
    --------------------
 
    procedure Skip_Next_Slot
-     (Work_Id : Regular_Work_Id) is
+     (Work_Id : TT_Work_Id) is
       Must_Leave : Boolean;
    begin
       Time_Triggered_Scheduler.Skip_Next_Slot (Work_Id, Must_Leave);
 
       if Must_Leave then
-         Leave_TT_Level (Work_Id);
+         Leave_TT_Level;
       end if;
    end Skip_Next_Slot;
 
@@ -137,20 +130,19 @@ package body Ada.Dispatching.TTS is
          --  Start new plan now if none is set. Otherwise, the scheduler will
          --  change to the Next_Plan at the end of the next mode change slot
          if Current_Plan = null then
+
             --  The extra millisecond delay is to bypass the exception we get
             --  if we don't add it. We still have to debug this. Note that the
             --  delay only affects the first mode change, because Current_Plan
             --  is null.
-            Change_Plan (Now + Milliseconds (1));
-            return;
-         end if;
+            Change_Plan (Now);
 
-         --  Accept Set_Plan requests during a mode change slot (coming
-         --  from ET tasks) and enforce the mode change at the end of it.
-         --  Note that this point is reached only if there is currently
-         --  a plan set, hence Current_Plan is not null
-         if Current_Plan (Current_Slot_Index).Kind = Mode_Change_Slot then
+         elsif Current_Plan (Current_Slot_Index).Kind = Mode_Change_Slot then
+
+            --  Accept Set_Plan requests during a mode change slot (coming
+            --  from PB tasks) and enforce the mode change at the end of it.
             Change_Plan (Next_Slot_Release);
+
          end if;
 
       end Set_Plan;
@@ -159,7 +151,7 @@ package body Ada.Dispatching.TTS is
       -- Prepare_For_Activation --
       ----------------------------
 
-      procedure Prepare_For_Activation (Work_Id : Regular_Work_Id) is
+      procedure Prepare_For_Activation (Work_Id : TT_Work_Id) is
       begin
          --  Register the Work_Id with the first task using it.
          --  Use of the Work_Id by another task breaks the model and causes PE
@@ -210,20 +202,14 @@ package body Ada.Dispatching.TTS is
       -- Leave_TT_Level --
       --------------------
 
-      procedure Leave_TT_Level (Work_Id : Regular_Work_Id) is
+      procedure Leave_TT_Level is -- (Work_Id : Regular_Work_Id) is
          Current_Slot : constant Time_Slot :=
            Current_Plan (Current_Slot_Index);
+         Base_Priority : System.Priority;
       begin
          if Current_Slot.Kind /= TT_Work_Slot then
             raise Program_Error
               with ("Leave_TT_Level called from a non-TT task");
-         end if;
-
-         if Current_Slot.Work_Id /= Work_Id then
-            raise Program_Error
-              with ("Leave_TT_Level called wIth Work_Id " & Work_Id'Image &
-                      " during a slot reserved for " &
-                      Current_Slot.Work_Id'Image);
          end if;
 
          if WCB (Current_Slot.Work_Id).Work_Thread_Id /= Thread_Self then
@@ -232,7 +218,13 @@ package body Ada.Dispatching.TTS is
                       Current_Slot.Work_Id'Image);
          end if;
 
-         WCB (Work_Id).Has_Completed := True;
+--           WCB (Work_Id).Has_Completed := True;
+         WCB (Current_Slot.Work_Id).Has_Completed := True;
+
+         Base_Priority :=
+           WCB (Current_Slot.Work_Id).Work_Thread_Id.Base_Priority;
+         Set_Priority (Base_Priority);
+
       end Leave_TT_Level;
 
       --------------------
@@ -240,16 +232,12 @@ package body Ada.Dispatching.TTS is
       --------------------
 
       procedure Skip_Next_Slot
-        (Work_Id : Regular_Work_Id;
+        (Work_Id : TT_Work_Id;
          Must_Leave : out Boolean)
       is
          Current_Slot : constant Time_Slot :=
            Current_Plan (Current_Slot_Index);
       begin
-         if Current_Slot.Kind /= TT_Work_Slot then
-            raise Program_Error
-              with ("Skip_Next_Slot called from a non-TT task");
-         end if;
 
          if WCB (Work_Id).Work_Thread_Id /= Thread_Self then
             raise Program_Error
@@ -356,12 +344,11 @@ package body Ada.Dispatching.TTS is
             Next_Slot_Index := Current_Plan.all'First;
          end if;
 
-         --  Compute next slot start time
-         Next_Slot_Release := Next_Slot_Release +
-           Current_Plan (Current_Slot_Index).Slot_Duration;
-
          --  Obtain current slot
          Current_Slot := Current_Plan (Current_Slot_Index);
+
+         --  Compute next slot start time
+         Next_Slot_Release := Now + Current_Slot.Slot_Duration;
 
          case Current_Slot.Kind is
 
@@ -442,7 +429,7 @@ package body Ada.Dispatching.TTS is
                   --    detected so far, so it must be running sliced and is
                   --    currently held from a previous exhausted slot, so it
                   --    must be resumed
-                  pragma Assert (WCB (Current_Slot.Work_Id).Is_Sliced);
+                  pragma Assert (Current_WCB.Is_Sliced);
 
                   --  Change thread state to runnable and insert it at the tail
                   --    of its active priority, which here implies that the
@@ -456,7 +443,7 @@ package body Ada.Dispatching.TTS is
                --  The work inherits its Is_Sliced condition from the
                --  Is_Continuation property of the new slot
                WCB (Current_Slot.Work_Id).Is_Sliced :=
-                 Current_Plan (Current_Slot_Index).Is_Continuation;
+                 Current_Slot.Is_Continuation;
 
                --  Set timing event for the next scheduling point
                NS_Event.Set_Handler (Next_Slot_Release - Overhead,

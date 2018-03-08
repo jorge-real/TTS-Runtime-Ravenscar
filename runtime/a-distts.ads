@@ -25,7 +25,7 @@ package Ada.Dispatching.TTS is
 
    --  TT tasks use a Work_Id of this type to identify themselves
    --  when they call the scheduler
-   type Regular_Work_Id is new Integer range 1 .. Number_Of_Work_IDs;
+   type TT_Work_Id is new Integer range 1 .. Number_Of_Work_IDs;
 
    --  A time slot in the TT plan. We use a variant record because different
    --  kinds of slots require different types of information
@@ -33,7 +33,7 @@ package Ada.Dispatching.TTS is
       Slot_Duration : Ada.Real_Time.Time_Span;
       case Kind is
          when TT_Work_Slot =>
-            Work_Id         : Regular_Work_Id;
+            Work_Id         : TT_Work_Id;
             Is_Continuation : Boolean := False;
             Is_Optional     : Boolean := False;
          when others =>
@@ -52,7 +52,7 @@ package Ada.Dispatching.TTS is
    --  TT works use this procedure to wait for their next assigned slot
    --  The When_Was_Released result informs caller of slot starting time
    procedure Wait_For_Activation
-     (Work_Id : Regular_Work_Id;
+     (Work_Id : TT_Work_Id;
       When_Was_Released : out Ada.Real_Time.Time);
 
    --  TT works use this procedure to inform that the critical part
@@ -62,14 +62,13 @@ package Ada.Dispatching.TTS is
 
    --  TT works use this procedure to inform the TT scheduler that
    --   there is no more work to do at TT priority level
-   procedure Leave_TT_Level
-     (Work_Id : Regular_Work_Id);
+   procedure Leave_TT_Level;
 
    --  TT works use this procedure to inform the TT scheduler that
    --   the next slot is not required. It can be used from PB-level.
    --  If it is used at TT-level, it implies a Leave_TT_Level action
    procedure Skip_Next_Slot
-     (Work_Id : Regular_Work_Id);
+     (Work_Id : TT_Work_Id);
 
 private
 
@@ -82,18 +81,17 @@ private
 
       --  Prepare work to wait for next activation
       procedure Prepare_For_Activation
-        (Work_Id : Regular_Work_Id);
+        (Work_Id : TT_Work_Id);
 
       --  Transform current slot in a continuation slot
       procedure Continue_Sliced;
 
       --  Inform the scheduler that you have no more work as a TT task
-      procedure Leave_TT_Level
-        (Work_Id : Regular_Work_Id);
+      procedure Leave_TT_Level;
 
       --  Inform the scheduler that the next slot is not required
       procedure Skip_Next_Slot
-        (Work_Id : Regular_Work_Id;
+        (Work_Id : TT_Work_Id;
          Must_Leave : out Boolean);
 
    private
