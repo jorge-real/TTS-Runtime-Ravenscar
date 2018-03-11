@@ -147,7 +147,7 @@ package body TTS_Example_A is
    begin
       Put_Line ("Starting all over again!");
       Put_Line ("Current Time =" & Now (Clock));
-      end End_Of_Plan_Final;
+   end End_Of_Plan_Final;
 
    ----------
    -- Main --
