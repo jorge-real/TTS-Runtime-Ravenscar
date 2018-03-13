@@ -28,6 +28,19 @@ package TT_Utilities is
    type Task_Actions is not null access procedure;
 
    ------------------------------------------------------------
+   --  Time_Slot types for building patterns                 --
+   ------------------------------------------------------------
+
+   type Slot_Type is (Regular,
+                      Initial,
+                      Mandatory,
+                      Final,
+                      Continuation,
+                      Terminal,
+                      Optional
+                     );
+
+   ------------------------------------------------------------
    --  Time_Slot constructor functions for building TT plans --
    ------------------------------------------------------------
    function A_TT_Work_Slot (Slot_Duration_MS  : Natural;
@@ -38,6 +51,10 @@ package TT_Utilities is
    function An_Empty_Slot (Slot_Duration_MS  : Natural) return Time_Slot;
 
    function A_Mode_Change_Slot (Slot_Duration_MS  : Natural) return Time_Slot;
+
+   function A_Work_Slot (Kind : Slot_Type ;
+                         Slot_Duration_MS  : Natural;
+                         Work_Id : TT_Work_Id ) return Time_Slot;
 
    -------------------------------
    --      SIMPLE TT TASK       --
