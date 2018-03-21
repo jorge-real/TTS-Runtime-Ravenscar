@@ -31,7 +31,9 @@ package TT_Utilities is
    --  Time_Slot types for building patterns                 --
    ------------------------------------------------------------
 
-   type Slot_Type is (Regular,
+   type Slot_Type is (Empty,
+                      Mode_Change,
+                      Regular,
                       Initial,
                       Mandatory,
                       Final,
@@ -52,9 +54,9 @@ package TT_Utilities is
 
    function A_Mode_Change_Slot (Slot_Duration_MS  : Natural) return Time_Slot;
 
-   function A_Work_Slot (Kind : Slot_Type ;
-                         Slot_Duration_MS  : Natural;
-                         Work_Id : TT_Work_Id ) return Time_Slot;
+   function New_Slot (Kind : Slot_Type ;
+                      Slot_Duration_MS  : Natural;
+                      Work_Id : TT_Work_Id :) return Time_Slot;
 
    -------------------------------
    --      SIMPLE TT TASK       --
