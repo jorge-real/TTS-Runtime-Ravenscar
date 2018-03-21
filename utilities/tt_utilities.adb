@@ -13,6 +13,7 @@ package body TT_Utilities is
    TT_Work_Slot     : Kind_Of_Slot renames TTS.TT_Work_Slot;
    Empty_Slot       : Kind_Of_Slot renames TTS.Empty_Slot;
    Mode_Change_Slot : Kind_Of_Slot renames TTS.Mode_Change_Slot;
+
    ---------------------------------
    --  Constructors of Time_Slots --
    ---------------------------------
@@ -40,6 +41,32 @@ package body TT_Utilities is
    function A_Mode_Change_Slot (Slot_Duration_MS  : Natural) return Time_Slot is
      ( New_Slot (Kind => TTS.Mode_Change_Slot,
                  MS => Slot_Duration_MS) );
+
+   function A_TT_Slot (Kind : Slot_Type ;
+                       Slot_Duration_MS  : Natural;
+                       Work_Id : TT_Work_Id := TT_Work_Id'Last) return Time_Slot is
+      Slot_Kind : Kind_Of_Slot;
+      Work_Id : TT_Work_Id := TT_Work_Id'Last;
+      Is_Continuation : Boolean := False;
+      Is_Optional : Boolean := False
+   begin
+      case Kind is
+         when Empty =>
+            Slot_Kind := Empty_Slot;
+         when Mode_Change =>
+            Slot_Kind := Mode_Change_Slot;
+         when Regular | Initial | Mandatory | Mandatory_Terminal, Final | Terminal =>
+            Slot_Kind := TT_Work_Slot;
+         when Mandatory_Sliced, Continuation =>
+            Slot_Kind := TT_Work_Slot;
+            Is_Continuation := True;
+         when Optional =>
+            Slot_Kind := TT_Work_Slot;
+            Is_Optional := True;
+      end case;
+
+      return New_Slot(Slot_Kind, Slot_Duration_MS, Is_Continuation, Is_Optional);
+   end A_TT_Slot;
 
    function New_Slot (Kind : Kind_Of_Slot;
                       MS  : Natural;

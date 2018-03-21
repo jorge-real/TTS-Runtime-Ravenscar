@@ -36,6 +36,8 @@ package TT_Utilities is
                       Regular,
                       Initial,
                       Mandatory,
+                      Mandatory_Sliced,
+                      Mandatory_Terminal,
                       Final,
                       Continuation,
                       Terminal,
@@ -54,9 +56,9 @@ package TT_Utilities is
 
    function A_Mode_Change_Slot (Slot_Duration_MS  : Natural) return Time_Slot;
 
-   function New_Slot (Kind : Slot_Type ;
-                      Slot_Duration_MS  : Natural;
-                      Work_Id : TT_Work_Id :) return Time_Slot;
+   function A_TT_Slot (Kind : Slot_Type ;
+                       Slot_Duration_MS  : Natural;
+                       Work_Id : TT_Work_Id := TT_Work_Id'Last) return Time_Slot;
 
    -------------------------------
    --      SIMPLE TT TASK       --
