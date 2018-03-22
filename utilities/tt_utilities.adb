@@ -17,15 +17,16 @@ package body TT_Utilities is
    ---------------------------------
    --  Constructors of Time_Slots --
    ---------------------------------
+
    --  Auxiliary for constructing slots --
    function New_Slot  (Kind : Kind_Of_Slot;
-                      MS  : Natural;
-                      Work_Id : TT_Work_Id := TT_Work_Id'Last;
-                      Is_Continuation : Boolean := False;
-                      Is_Optional : Boolean := False) return Time_Slot;
+                       MS : Natural;
+                       Work_Id : TT_Work_Id := TT_Work_Id'Last;
+                       Is_Continuation : Boolean := False;
+                       Is_Optional : Boolean := False) return Time_Slot;
 
    function A_TT_Slot (Kind : Slot_Type ;
-                       Slot_Duration_MS  : Natural;
+                       Slot_Duration_MS : Natural;
                        Work_Id : TT_Work_Id := TT_Work_Id'Last) return Time_Slot is
       Slot_Kind : Kind_Of_Slot;
       Is_Continuation : Boolean := False;

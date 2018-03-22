@@ -42,8 +42,9 @@ package body TTS_Example_A is
    procedure Main_Code (S : in out Second_Init_Task);
 
    Wk3_Code : aliased Second_Init_Task;
-   Wk3 : Simple_TT_Task (Work_Id => 3,
-                         Task_State => Wk3_Code'Access);
+   Wk3 : Simple_TT_Task
+     (Work_Id => 3,
+      Task_State => Wk3_Code'Access);
 
    type Second_IMF_Task is new Initial_Mandatory_Final_Task_State with null record;
    procedure Initialize (S : in out Second_IMF_Task) is null;
