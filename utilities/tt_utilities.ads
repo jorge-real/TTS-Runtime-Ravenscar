@@ -24,8 +24,29 @@ package TT_Utilities is
       --  Ditto for procedure Set_Plan
    procedure Set_Plan (TTP : Time_Triggered_Plan_Access) renames TTS.Set_Plan;
 
-   --  Access type to parameterless action procedures
-   type Task_Actions is not null access procedure;
+   -- Simple Task State. Initialize + Code
+   type Simple_Task_State is tagged null record;
+   procedure Initialize (S : in out Simple_Task_State) is abstract;
+   procedure Main_Code (S : in out Simple_Task_State) is abstract;
+
+   type Any_Simple_Task_State is access all Simple_Task_State'Class;
+
+   -- Initial_Final Task State. Initialize + Initial_Code + Final_Code
+   type Initial_Final_Task_State is tagged null record;
+   procedure Initialize (S : in out Initial_Final_Task_State) is abstract;
+   procedure Initial_Code (S : in out Initial_Final_Task_State) is abstract;
+   procedure Final_Code (S : in out Initial_Final_Task_State) is abstract;
+
+   type Any_Initial_Final_Task_State is access all Initial_Final_Task_State'Class;
+
+   -- Initial_Mandatory_Final Task State. Initialize + Initial_Code + Mandatory_Code + Final_Code
+   type Initial_Mandatory_Final_Task_State is tagged null record;
+   procedure Initialize (S : in out Initial_Mandatory_Final_Task_State) is abstract;
+   procedure Initial_Code (S : in out Initial_Mandatory_Final_Task_State) is abstract;
+   procedure Mandatory_Code (S : in out Initial_Mandatory_Final_Task_State) is abstract;
+   procedure Final_Code (S : in out Initial_Mandatory_Final_Task_State) is abstract;
+
+   type Any_Initial_Mandatory_Final_Task_State is access all Initial_Mandatory_Final_Task_State'Class;
 
    ------------------------------------------------------------
    --  Time_Slot types for building patterns                 --
@@ -47,15 +68,6 @@ package TT_Utilities is
    ------------------------------------------------------------
    --  Time_Slot constructor functions for building TT plans --
    ------------------------------------------------------------
-   function A_TT_Work_Slot (Slot_Duration_MS  : Natural;
-                            Work_Id : TT_Work_Id := TT_Work_Id'Last;
-                            Is_Continuation : Boolean := False;
-                            Is_Optional : Boolean := False) return Time_Slot;
-
-   function An_Empty_Slot (Slot_Duration_MS  : Natural) return Time_Slot;
-
-   function A_Mode_Change_Slot (Slot_Duration_MS  : Natural) return Time_Slot;
-
    function A_TT_Slot (Kind : Slot_Type ;
                        Slot_Duration_MS  : Natural;
                        Work_Id : TT_Work_Id := TT_Work_Id'Last) return Time_Slot;
@@ -66,8 +78,8 @@ package TT_Utilities is
    --  Requires 1 slot per job  --
    -------------------------------
    task type Simple_TT_Task
-     (Work_Id : TT_Work_Id;
-      Actions : Task_Actions)
+     (Work_Id    : TT_Work_Id;
+      Task_State : Any_Simple_Task_State)
      with Priority => System.Priority'Last - 1;
 
    ---------------------------------
@@ -77,9 +89,19 @@ package TT_Utilities is
    --  one for I, and one for F   --
    ---------------------------------
    task type Initial_Final_TT_Task
-     (Work_Id      : TT_Work_Id;
-      Initial_Part : Task_Actions;
-      Final_Part   : Task_Actions)
+     (Work_Id    : TT_Work_Id;
+      Task_State : Any_Initial_Final_Task_State)
+     with Priority => System.Priority'Last - 1;
+
+   ----------------------------------------------------
+   --  INITIAL - MANDATORY (sliced) - FINAL TT TASK  --
+   --                                                --
+   --  Requires 3 or more slots per job,             --
+   --    for I, M(s) and F parts                     --
+   ----------------------------------------------------
+   task type Initial_Mandatory_Final_TT_Task
+     (Work_Id    : TT_Work_Id;
+      Task_State : Any_Initial_Mandatory_Final_Task_State)
      with Priority => System.Priority'Last - 1;
 
    ----------------------------------------------------
@@ -88,10 +110,8 @@ package TT_Utilities is
    --  Requires 2 slots per job, for I and F parts   --
    ----------------------------------------------------
    task type InitialMandatorySliced_Final_TT_Task
-     (Work_Id               : TT_Work_Id;
-      Initial_Part          : Task_Actions;
-      Mandatory_Sliced_Part : Task_Actions;
-      Final_Part            : Task_Actions)
+     (Work_Id    : TT_Work_Id;
+      Task_State : Any_Initial_Mandatory_Final_Task_State)
      with Priority => System.Priority'Last - 1;
 
 end TT_Utilities;

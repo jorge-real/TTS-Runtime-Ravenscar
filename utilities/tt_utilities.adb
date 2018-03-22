@@ -24,31 +24,13 @@ package body TT_Utilities is
                       Is_Continuation : Boolean := False;
                       Is_Optional : Boolean := False) return Time_Slot;
 
-   function A_TT_Work_Slot (Slot_Duration_MS  : Natural;
-                          Work_Id : TT_Work_Id := TT_Work_Id'Last;
-                          Is_Continuation : Boolean := False;
-                          Is_Optional : Boolean := False) return Time_Slot is
-     (New_Slot (Kind => TTS.TT_Work_Slot,
-                MS => Slot_Duration_MS,
-                Work_Id => Work_Id,
-                Is_Continuation => Is_Continuation,
-                Is_Optional => Is_Optional) );
-
-   function AN_Empty_Slot (Slot_Duration_MS  : Natural) return Time_Slot is
-     ( New_Slot (Kind => TTS.Empty_Slot,
-                 MS => Slot_Duration_MS) );
-
-   function A_Mode_Change_Slot (Slot_Duration_MS  : Natural) return Time_Slot is
-     ( New_Slot (Kind => TTS.Mode_Change_Slot,
-                 MS => Slot_Duration_MS) );
-
    function A_TT_Slot (Kind : Slot_Type ;
                        Slot_Duration_MS  : Natural;
                        Work_Id : TT_Work_Id := TT_Work_Id'Last) return Time_Slot is
       Slot_Kind : Kind_Of_Slot;
       Work_Id : TT_Work_Id := TT_Work_Id'Last;
       Is_Continuation : Boolean := False;
-      Is_Optional : Boolean := False
+      Is_Optional : Boolean := False;
    begin
       case Kind is
          when Empty =>
@@ -102,6 +84,8 @@ package body TT_Utilities is
       Start             : Time;
    begin
 
+      Task_State.Initialize;
+
       loop
 
          TTS.Wait_For_Activation (Work_Id, When_Was_Released);
@@ -109,11 +93,11 @@ package body TT_Utilities is
          --  Log --
          Jitter := Clock - When_Was_Released;
          Log (No_Event, "|---> Jitter of Worker" & Integer (Work_Id)'Image &
-                       " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
          Start := Clock;
          --  Log --
 
-         Actions.all;
+         Task_State.Main_Code;
 
          --  Log --
          Log (No_Event, "Work done for worker" & Integer (Work_Id)'Image);
@@ -137,6 +121,8 @@ package body TT_Utilities is
       Jitter            : Time_Span;
    begin
 
+      Task_State.Initialize;
+
       loop
 
          TTS.Wait_For_Activation (Work_Id, When_Was_Released);
@@ -147,7 +133,7 @@ package body TT_Utilities is
                        " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
          --  Log --
 
-         Initial_Part.all;
+         Task_State.Initial_Code;
 
          TTS.Wait_For_Activation (Work_Id, When_Was_Released);
 
@@ -157,7 +143,7 @@ package body TT_Utilities is
                        " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
          --  Log --
 
-         Final_Part.all;
+         Task_State.Final_Code;
 
       end loop;
 
@@ -166,6 +152,57 @@ package body TT_Utilities is
          Put_Line ("TT worker W" & Character'Val (Character'Pos ('0') + Integer (Work_Id)) &
                      ": " & Exception_Message (E));
    end Initial_Final_TT_Task;
+
+   -------------------------------------
+   -- Initial_Mandatory_Final_TT_Task --
+   -------------------------------------
+
+   task body Initial_Mandatory_Final_TT_Task is
+      When_Was_Released : Time;
+      Jitter            : Time_Span;
+   begin
+
+      Task_State.Initialize;
+
+      loop
+
+         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
+
+         --  Log --
+         Jitter := Clock - When_Was_Released;
+         Log (No_Event, "|---> Jitter of I Worker" & Integer'Image (Integer (Work_Id)) &
+                       " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+         --  Log --
+
+         Task_State.Initial_Code;
+
+         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
+
+         --  Log --
+         Jitter := Clock - When_Was_Released;
+         Log (No_Event, "|---> Jitter of M Worker" & Integer'Image (Integer (Work_Id)) &
+                       " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+         --  Log --
+
+         Task_State.Mandatory_Code;
+
+         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
+
+         --  Log --
+         Jitter := Clock - When_Was_Released;
+         Log (No_Event, "|---> Jitter of F Worker" & Integer'Image (Integer (Work_Id)) &
+                       " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+         --  Log --
+
+         Task_State.Final_Code;
+
+      end loop;
+
+   exception
+      when E : others =>
+         Put_Line ("TT worker W" & Character'Val (Character'Pos ('0') + Integer (Work_Id)) &
+                     ": " & Exception_Message (E));
+   end Initial_Mandatory_Final_TT_Task;
 
    ------------------------------------------
    -- InitialMandatorySliced_Final_TT_Task --
@@ -176,6 +213,8 @@ package body TT_Utilities is
       Jitter            : Time_Span;
    begin
 
+      Task_State.Initialize;
+
       loop
 
          TTS.Wait_For_Activation (Work_Id, When_Was_Released);
@@ -186,14 +225,15 @@ package body TT_Utilities is
                        " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
          --  Log --
 
-         Initial_Part.all;
+         Task_State.Initial_Code;
 
          TTS.Continue_Sliced;
+
          --  Log  --
          Log (No_Event, "Continue sliced worker" & Integer (Work_Id)'Image);
          --  Log  --
 
-         Mandatory_Sliced_Part.all;
+         Task_State.Mandatory_Code;
 
          --  Log  --
          Log (No_Event, "Mandatory sliced done for worker" & Integer (Work_Id)'Image);
@@ -208,7 +248,7 @@ package body TT_Utilities is
                        " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
          --  Log --
 
-         Final_Part.all;
+         Task_State.Final_Code;
 
          --  Log  --
          Log (No_Event, "Final part done for worker" & Integer (Work_Id)'Image);
