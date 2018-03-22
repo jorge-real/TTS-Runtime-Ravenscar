@@ -130,19 +130,19 @@ package body Ada.Dispatching.TTS is
          --  Start new plan now if none is set. Otherwise, the scheduler will
          --  change to the Next_Plan at the end of the next mode change slot
          if Current_Plan = null then
-
+            
             --  The extra millisecond delay is to bypass the exception we get
             --  if we don't add it. We still have to debug this. Note that the
             --  delay only affects the first mode change, because Current_Plan
             --  is null.
             Change_Plan (Now);
-
+            
          elsif Current_Plan (Current_Slot_Index).Kind = Mode_Change_Slot then
-
+            
             --  Accept Set_Plan requests during a mode change slot (coming
             --  from PB tasks) and enforce the mode change at the end of it.
             Change_Plan (Next_Slot_Release);
-
+            
          end if;
 
       end Set_Plan;
@@ -293,7 +293,7 @@ package body Ada.Dispatching.TTS is
 
          Current_Slot := Current_Plan (Current_Slot_Index);
 
-         --  Nothing to be done unless the endoing slot was a TT_Work_Slot
+         --  Nothing to be done unless the ending slot was a TT_Work_Slot
          if Current_Slot.Kind = TT_Work_Slot then
 
             Current_WCB := WCB (Current_Slot.Work_Id);
