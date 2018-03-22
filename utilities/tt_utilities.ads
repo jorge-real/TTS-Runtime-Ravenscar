@@ -25,14 +25,14 @@ package TT_Utilities is
    procedure Set_Plan (TTP : Time_Triggered_Plan_Access) renames TTS.Set_Plan;
 
    -- Simple Task State. Initialize + Code
-   type Simple_Task_State is tagged null record;
+   type Simple_Task_State is abstract tagged null record;
    procedure Initialize (S : in out Simple_Task_State) is abstract;
    procedure Main_Code (S : in out Simple_Task_State) is abstract;
 
    type Any_Simple_Task_State is access all Simple_Task_State'Class;
 
    -- Initial_Final Task State. Initialize + Initial_Code + Final_Code
-   type Initial_Final_Task_State is tagged null record;
+   type Initial_Final_Task_State is abstract tagged null record;
    procedure Initialize (S : in out Initial_Final_Task_State) is abstract;
    procedure Initial_Code (S : in out Initial_Final_Task_State) is abstract;
    procedure Final_Code (S : in out Initial_Final_Task_State) is abstract;
@@ -40,7 +40,7 @@ package TT_Utilities is
    type Any_Initial_Final_Task_State is access all Initial_Final_Task_State'Class;
 
    -- Initial_Mandatory_Final Task State. Initialize + Initial_Code + Mandatory_Code + Final_Code
-   type Initial_Mandatory_Final_Task_State is tagged null record;
+   type Initial_Mandatory_Final_Task_State is abstract tagged null record;
    procedure Initialize (S : in out Initial_Mandatory_Final_Task_State) is abstract;
    procedure Initial_Code (S : in out Initial_Mandatory_Final_Task_State) is abstract;
    procedure Mandatory_Code (S : in out Initial_Mandatory_Final_Task_State) is abstract;
@@ -55,13 +55,8 @@ package TT_Utilities is
    type Slot_Type is (Empty,
                       Mode_Change,
                       Regular,
-                      Initial,
-                      Mandatory,
-                      Mandatory_Sliced,
-                      Mandatory_Terminal,
-                      Final,
-                      Continuation,
                       Terminal,
+                      Continuation,
                       Optional
                      );
 

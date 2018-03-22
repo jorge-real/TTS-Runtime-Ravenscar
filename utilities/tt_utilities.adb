@@ -28,7 +28,6 @@ package body TT_Utilities is
                        Slot_Duration_MS  : Natural;
                        Work_Id : TT_Work_Id := TT_Work_Id'Last) return Time_Slot is
       Slot_Kind : Kind_Of_Slot;
-      Work_Id : TT_Work_Id := TT_Work_Id'Last;
       Is_Continuation : Boolean := False;
       Is_Optional : Boolean := False;
    begin
@@ -37,9 +36,9 @@ package body TT_Utilities is
             Slot_Kind := Empty_Slot;
          when Mode_Change =>
             Slot_Kind := Mode_Change_Slot;
-         when Regular | Initial | Mandatory | Mandatory_Terminal, Final | Terminal =>
+         when Regular | Terminal =>
             Slot_Kind := TT_Work_Slot;
-         when Mandatory_Sliced, Continuation =>
+         when Continuation =>
             Slot_Kind := TT_Work_Slot;
             Is_Continuation := True;
          when Optional =>
@@ -47,7 +46,7 @@ package body TT_Utilities is
             Is_Optional := True;
       end case;
 
-      return New_Slot(Slot_Kind, Slot_Duration_MS, Is_Continuation, Is_Optional);
+      return New_Slot(Slot_Kind, Slot_Duration_MS, Work_Id, Is_Continuation, Is_Optional);
    end A_TT_Slot;
 
    function New_Slot (Kind : Kind_Of_Slot;
