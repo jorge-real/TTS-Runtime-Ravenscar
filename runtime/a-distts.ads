@@ -25,7 +25,7 @@ package Ada.Dispatching.TTS is
 
    --  TT tasks use a Work_Id of this type to identify themselves
    --  when they call the scheduler
-   type TT_Work_Id is new Integer range 1 .. Number_Of_Work_IDs;
+   type TT_Work_Id is new Positive range 1 .. Number_Of_Work_IDs;
 
    --  A time slot in the TT plan. We use a variant record because different
    --  kinds of slots require different types of information
@@ -47,12 +47,12 @@ package Ada.Dispatching.TTS is
 
    --  Set new TT plan to start at the end of the next mode change slot
    procedure Set_Plan
-     (TTP       : Time_Triggered_Plan_Access);
+     (TTP : Time_Triggered_Plan_Access);
 
    --  TT works use this procedure to wait for their next assigned slot
    --  The When_Was_Released result informs caller of slot starting time
    procedure Wait_For_Activation
-     (Work_Id : TT_Work_Id;
+     (Work_Id           : TT_Work_Id;
       When_Was_Released : out Ada.Real_Time.Time);
 
    --  TT works use this procedure to inform that the critical part
@@ -77,7 +77,7 @@ private
 
       --  Setting a new TT plan
       procedure Set_Plan
-        (TTP     : Time_Triggered_Plan_Access);
+        (TTP : Time_Triggered_Plan_Access);
 
       --  Prepare work to wait for next activation
       procedure Prepare_For_Activation
@@ -91,12 +91,12 @@ private
 
       --  Inform the scheduler that the next slot is not required
       procedure Skip_Next_Slot
-        (Work_Id : TT_Work_Id;
+        (Work_Id    : TT_Work_Id;
          Must_Leave : out Boolean);
 
    private
       --  New slot timing event
-      NS_Event           : Ada.Real_Time.Timing_Events.Timing_Event;
+      NS_Event : Ada.Real_Time.Timing_Events.Timing_Event;
 
       --  New slot handler procedure
       procedure NS_Handler
@@ -105,7 +105,7 @@ private
       --  This access object is the reason why the scheduler is declared
       --  in this private part, given that this is a generioc package.
       --  It should be a constant, but a PO can't have constant components.
-      NS_Handler_Access  : Ada.Real_Time.Timing_Events.Timing_Event_Handler :=
+      NS_Handler_Access : Ada.Real_Time.Timing_Events.Timing_Event_Handler :=
         NS_Handler'Access;
 
       --  Procedure to enforce plan change
