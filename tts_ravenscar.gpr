@@ -1,0 +1,22 @@
+project Tts_Ravenscar is
+
+   for Languages use ("Ada");
+   for Target use "arm-eabi";
+   for Object_Dir use "obj";
+   for Source_Dirs use ("examples", "utilities");
+   for Runtime ("ada") use "ravenscar-full-stm32f4";
+   for Main use ("main5.adb");
+
+   package Compiler is
+      for Switches ("ada") use ("-gnat12");
+   end Compiler;
+
+   package Ide is
+      for Vcs_Kind use "['Auto', 'Mercurial', 'Subversion', 'Git', 'ClearCase Native', 'CVS']";
+      for Connection_Tool use "st-util";
+      for Program_Host use "localhost:4242";
+      for Communication_Protocol use "remote";
+   end Ide;
+
+end Tts_Ravenscar;
+
