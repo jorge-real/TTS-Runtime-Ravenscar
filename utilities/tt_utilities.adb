@@ -13,33 +13,42 @@ package body TT_Utilities is
    TT_Work_Slot     : Kind_Of_Slot renames TTS.TT_Work_Slot;
    Empty_Slot       : Kind_Of_Slot renames TTS.Empty_Slot;
    Mode_Change_Slot : Kind_Of_Slot renames TTS.Mode_Change_Slot;
+
    ---------------------------------
    --  Constructors of Time_Slots --
    ---------------------------------
+
    --  Auxiliary for constructing slots --
    function New_Slot  (Kind : Kind_Of_Slot;
-                      MS  : Natural;
-                      Work_Id : TT_Work_Id := TT_Work_Id'Last;
-                      Is_Continuation : Boolean := False;
-                      Is_Optional : Boolean := False) return Time_Slot;
+                       MS : Natural;
+                       Work_Id : TT_Work_Id := TT_Work_Id'Last;
+                       Is_Continuation : Boolean := False;
+                       Is_Optional : Boolean := False) return Time_Slot;
 
-   function A_TT_Work_Slot (Slot_Duration_MS  : Natural;
-                          Work_Id : TT_Work_Id := TT_Work_Id'Last;
-                          Is_Continuation : Boolean := False;
-                          Is_Optional : Boolean := False) return Time_Slot is
-     (New_Slot (Kind => TTS.TT_Work_Slot,
-                MS => Slot_Duration_MS,
-                Work_Id => Work_Id,
-                Is_Continuation => Is_Continuation,
-                Is_Optional => Is_Optional) );
+   function A_TT_Slot (Kind : Slot_Type ;
+                       Slot_Duration_MS : Natural;
+                       Work_Id : TT_Work_Id := TT_Work_Id'Last) return Time_Slot is
+      Slot_Kind : Kind_Of_Slot;
+      Is_Continuation : Boolean := False;
+      Is_Optional : Boolean := False;
+   begin
+      case Kind is
+         when Empty =>
+            Slot_Kind := Empty_Slot;
+         when Mode_Change =>
+            Slot_Kind := Mode_Change_Slot;
+         when Regular | Terminal =>
+            Slot_Kind := TT_Work_Slot;
+         when Continuation =>
+            Slot_Kind := TT_Work_Slot;
+            Is_Continuation := True;
+         when Optional =>
+            Slot_Kind := TT_Work_Slot;
+            Is_Optional := True;
+      end case;
 
-   function AN_Empty_Slot (Slot_Duration_MS  : Natural) return Time_Slot is
-     ( New_Slot (Kind => TTS.Empty_Slot,
-                 MS => Slot_Duration_MS) );
-
-   function A_Mode_Change_Slot (Slot_Duration_MS  : Natural) return Time_Slot is
-     ( New_Slot (Kind => TTS.Mode_Change_Slot,
-                 MS => Slot_Duration_MS) );
+      return New_Slot(Slot_Kind, Slot_Duration_MS, Work_Id, Is_Continuation, Is_Optional);
+   end A_TT_Slot;
 
    function New_Slot (Kind : Kind_Of_Slot;
                       MS  : Natural;
