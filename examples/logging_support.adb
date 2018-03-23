@@ -1,5 +1,3 @@
---  pragma Locking_Policy (Ceiling_Locking);
-
 with Ada.Text_IO;
 with Ada.Real_Time;           use Ada.Real_Time;
 with Ada.Characters.Latin_1;  use Ada.Characters.Latin_1;
