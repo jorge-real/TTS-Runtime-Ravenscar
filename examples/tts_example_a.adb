@@ -15,139 +15,167 @@ package body TTS_Example_A is
    pragma Volatile (Var_1);
    pragma Volatile (Var_2);
 
-   --  TT actions
-   procedure First_Seq_Start;
-   procedure Second_Seq_Start;
-   procedure First_Initial;
-   procedure First_Mandatory_Sliced;
-   procedure First_Final;
-   procedure Second_Initial;
-   procedure Second_Mandatory_Sliced;
-   procedure Second_Final;
-   procedure End_Of_Plan_Initial;
-   procedure End_Of_Plan_Final;
+   -- TT tasks --
 
-   --  TT tasks --
-   Wk1 : Simple_TT_Task (Work_Id => 1,
-                         Actions => First_Seq_Start'Access);
+   type First_Init_Task is new Simple_Task_State with null record;
+   procedure Initialize (S : in out First_Init_Task) is null;
+   procedure Main_Code (S : in out First_Init_Task);
 
+   Wk1_Code : aliased First_Init_Task;
+   Wk1 : Simple_TT_Task
+     (Work_Id => 1,
+      Task_State => Wk1_Code'Access,
+      Synced_Init => False);
+
+   type First_IMF_Task is new Initial_Mandatory_Final_Task_State with
+      record
+         Counter : Natural := 0;
+      end record;
+   procedure Initialize (S : in out First_IMF_Task) is null;
+   procedure Initial_Code (S : in out First_IMF_Task);
+   procedure Mandatory_Code (S : in out First_IMF_Task);
+   procedure Final_Code (S : in out First_IMF_Task);
+
+   Wk2_Code : aliased First_IMF_Task;
    Wk2 : InitialMandatorySliced_Final_TT_Task
      (Work_Id => 2,
-      Initial_Part => First_Initial'Access,
-      Mandatory_Sliced_Part => First_Mandatory_Sliced'Access,
-      Final_Part => First_Final'Access);
+      Task_State => Wk2_Code'Access,
+      Synced_Init => False);
 
-   Wk3 : Simple_TT_Task (Work_Id => 3,
-                         Actions => Second_Seq_Start'Access);
+   type Second_Init_Task is new Simple_Task_State with null record;
+   procedure Initialize (S : in out Second_Init_Task) is null;
+   procedure Main_Code (S : in out Second_Init_Task);
+
+   Wk3_Code : aliased Second_Init_Task;
+   Wk3 : Simple_TT_Task
+     (Work_Id => 3,
+      Task_State => Wk3_Code'Access,
+      Synced_Init => False);
+
+   type Second_IMF_Task is new Initial_Mandatory_Final_Task_State with
+      record
+         Counter : Natural := 0;
+      end record;
+   procedure Initialize (S : in out Second_IMF_Task) is null;
+   procedure Initial_Code (S : in out Second_IMF_Task);
+   procedure Mandatory_Code (S : in out Second_IMF_Task);
+   procedure Final_Code (S : in out Second_IMF_Task);
+
+   Wk4_Code : aliased Second_IMF_Task;
    Wk4 : InitialMandatorySliced_Final_TT_Task
      (Work_Id => 4,
-      Initial_Part => Second_Initial'Access,
-      Mandatory_Sliced_Part => Second_Mandatory_Sliced'Access,
-      Final_Part => Second_Final'Access);
+      Task_State => Wk4_Code'Access,
+      Synced_Init => False);
 
+   type End_Of_Plan_IF_Task is new Initial_Final_Task_State with null record;
+   procedure Initialize (S : in out End_Of_Plan_IF_Task) is null;
+   procedure Initial_Code (S : in out End_Of_Plan_IF_Task);
+   procedure Final_Code (S : in out End_Of_Plan_IF_Task);
+
+   Wk5_Code : aliased End_Of_Plan_IF_Task;
    Wk5 : Initial_Final_TT_Task
      (Work_Id => 5,
-      Initial_Part => End_Of_Plan_Initial'Access,
-      Final_Part => End_Of_Plan_Final'Access);
+      Task_State => Wk5_Code'Access,
+      Synced_Init => False);
 
 
    --  The TT plan
    TT_Plan : aliased Time_Triggered_Plan :=
-     ( A_TT_Work_Slot (50, 1),        --  Single slot for 1st seq. start
-       An_Empty_Slot  (150),
-       A_TT_Work_Slot (50, 3),        --  Single slot for 2nd seq. start
-       An_Empty_Slot  (150),
-       A_TT_Work_Slot (20, 2),        --  Seq. 1, IMs part
-       An_Empty_Slot  (180),
-       A_TT_Work_Slot (50, 4),        --  Seq. 2, IMs part
-       An_Empty_Slot  (150),
-       A_TT_Work_Slot (20, 2, True),  --  Seq. 1, continuation of Ms part
-       An_Empty_Slot  (180),
-       A_TT_Work_Slot (100, 4),       --  Seq. 2, terminal of Ms part
-       An_Empty_Slot  (100),
-       A_TT_Work_Slot (20, 2),        --  Seq. 1, terminal of Ms part
-       An_Empty_Slot  (180),
-       A_TT_Work_Slot (50, 4),        --  Seq. 2, F part
-       An_Empty_Slot  (150),
-       A_TT_Work_Slot (50, 2),        --  Seq. 1, F part
-       An_Empty_Slot  (150),
-       A_TT_Work_Slot (20, 5),        --  I part of end of plan
-       An_Empty_Slot  (80),
-       A_TT_Work_Slot (20, 5),        --  F part of end of plan
-       A_Mode_Change_Slot (80) );
-
+     ( A_TT_Slot (Regular, 50, 1),        --  Single slot for 1st seq. start
+       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Regular, 50, 3),        --  Single slot for 2nd seq. start
+       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Regular, 20, 2),        --  Seq. 1, IMs part
+       A_TT_Slot (Empty, 180),
+       A_TT_Slot (Regular, 50, 4),        --  Seq. 2, IMs part
+       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Continuation, 20, 2),   --  Seq. 1, continuation of Ms part
+       A_TT_Slot (Empty, 180),
+       A_TT_Slot (Terminal, 100, 4),      --  Seq. 2, terminal of Ms part
+       A_TT_Slot (Empty, 100),
+       A_TT_Slot (Terminal, 20, 2),       --  Seq. 1, terminal of Ms part
+       A_TT_Slot (Empty, 180),
+       A_TT_Slot (Regular, 50, 4),        --  Seq. 2, F part
+       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Regular, 50, 2),        --  Seq. 1, F part
+       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Regular, 20, 5),        --  I part of end of plan
+       A_TT_Slot (Empty, 80),
+       A_TT_Slot (Regular, 20, 5),        --  F part of end of plan
+       A_TT_Slot (Mode_Change, 80) );
 
    --  Auxiliary for printing times --
    function Now (Current : Time) return String is
      (Duration'Image ( To_Duration (Current - Epoch) * 1000) & " ms.");
 
    --  Actions of sequence initialisations
-   procedure First_Seq_Start is  --  Simple_TT task with ID = 1
+   procedure Main_Code (S : in out First_Init_Task) is  --  Simple_TT task with ID = 1
    begin
       Var_1 := 0;
-      Put_Line ("First_Seq_Start ended at " & Now (Clock));
-   end First_Seq_Start;
+      Put_Line ("First_Init_Task.Main_Code ended at " & Now (Clock));
+   end Main_Code;
 
-   procedure Second_Seq_Start is  --  Simple_TT task with ID = 3
+   procedure Main_Code (S : in out Second_Init_Task) is  --  Simple_TT task with ID = 3
    begin
       Var_2 := 0;
-      Put_Line ("Second_Seq_Start ended at " & Now (Clock));
-   end Second_Seq_Start;
+      Put_Line ("Second_Init_Task.Main_Code ended at " & Now (Clock));
+   end Main_Code;
 
    --  Actions of first sequence: IMs-F task with ID = 2
-   procedure First_Initial is
+   procedure Initial_Code (S : in out First_IMF_Task) is
    begin
-      Var_1 := 1;
-      Put_Line ("First_Initial ended at " & Now (Clock));
-   end First_Initial;
+      S.Counter := Var_1;
+      Put_Line ("First_IMF_Task.Initial_Code ended at " & Now (Clock));
+   end Initial_Code;
 
-   procedure First_Mandatory_Sliced is
+   procedure Mandatory_Code (S : in out First_IMF_Task) is
    begin
-      while Var_1 < 300_000 loop
-         Var_1 := Var_1 + 1;
+      while S.Counter < 300_000 loop
+         S.Counter := S.Counter + 1;
       end loop;
-      Put_Line ("First_Mandatory_Sliced ended at " & Now (Clock));
-   end First_Mandatory_Sliced;
+      Put_Line ("First_IMF_Task.Mandatory_Code sliced ended at " & Now (Clock));
+   end Mandatory_Code;
 
-   procedure First_Final is
+   procedure Final_Code (S : in out First_IMF_Task) is
    begin
-      Put_Line ("End of Seq. 1 with Var_1 =" & Var_1'Image & " at" & Now (Clock));
-   end First_Final;
-
+      Var_1 := S.Counter;
+      Put_Line ("First_IMF_Task.Final_Code Seq. 1 with Var_1 =" & Var_1'Image & " at" & Now (Clock));
+   end Final_Code;
 
    --  Actions of Second sequence: IMs-F task with ID = 4
-   procedure Second_Initial is
+   procedure Initial_Code (S : in out Second_IMF_Task) is
    begin
-      Var_2 := 1;
-      Put_Line ("Second_Initial ended at " & Now (Clock));
-  end Second_Initial;
+      S.Counter := Var_2;
+      Put_Line ("Second_IMF_Task.Initial_Code ended at " & Now (Clock));
+  end Initial_Code;
 
-   procedure Second_Mandatory_Sliced is
+   procedure Mandatory_Code (S : in out Second_IMF_Task) is
    begin
-      while Var_2 < 100_000 loop
-         Var_2 := Var_2 + 1;
+      while S.Counter < 100_000 loop
+         S.Counter := S.Counter + 1;
       end loop;
-      Put_Line ("Second_Mandatory_Sliced ended at " & Now (Clock));
-   end Second_Mandatory_Sliced;
+      Put_Line ("Second_IMF_Task.Mandatory_Code sliced ended at " & Now (Clock));
+   end Mandatory_Code;
 
-   procedure Second_Final is
+   procedure Final_Code (S : in out Second_IMF_Task) is
    begin
-      Put_Line ("End of Seq. 2 with Var_2 =" & Var_2'Image  & " at" & Now (Clock));
-   end Second_Final;
+      Var_2 := S.Counter;
+      Put_Line ("Second_IMF_Task.Final_Code Seq. 2 with Var_2 =" & Var_2'Image  & " at" & Now (Clock));
+   end Final_Code;
 
    --  End of plan actions: I-F task with ID = 4
-   procedure End_Of_Plan_Initial is
+   procedure Initial_Code (S : in out End_Of_Plan_IF_Task) is
    begin
       Put_Line ("Value of Var_1 =" & Var_1'Image);
       Put_Line ("Value of Var_2 =" & Var_2'Image);
       Put_Line ("Current Time =" & Now (Clock));
-   end End_Of_Plan_Initial;
+   end Initial_Code;
 
-   procedure End_Of_Plan_Final is
+   procedure Final_Code (S : in out End_Of_Plan_IF_Task) is
    begin
       Put_Line ("Starting all over again!");
       Put_Line ("Current Time =" & Now (Clock));
-   end End_Of_Plan_Final;
+   end Final_Code;
 
    ----------
    -- Main --
