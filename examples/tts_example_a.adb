@@ -53,28 +53,28 @@ package body TTS_Example_A is
 
    --  The TT plan
    TT_Plan : aliased Time_Triggered_Plan :=
-     ( A_TT_Work_Slot (50, 1),        --  Single slot for 1st seq. start
-       An_Empty_Slot  (150),
-       A_TT_Work_Slot (50, 3),        --  Single slot for 2nd seq. start
-       An_Empty_Slot  (150),
-       A_TT_Work_Slot (20, 2),        --  Seq. 1, IMs part
-       An_Empty_Slot  (180),
-       A_TT_Work_Slot (50, 4),        --  Seq. 2, IMs part
-       An_Empty_Slot  (150),
-       A_TT_Work_Slot (20, 2, True),  --  Seq. 1, continuation of Ms part
-       An_Empty_Slot  (180),
-       A_TT_Work_Slot (100, 4),       --  Seq. 2, terminal of Ms part
-       An_Empty_Slot  (100),
-       A_TT_Work_Slot (20, 2),        --  Seq. 1, terminal of Ms part
-       An_Empty_Slot  (180),
-       A_TT_Work_Slot (50, 4),        --  Seq. 2, F part
-       An_Empty_Slot  (150),
-       A_TT_Work_Slot (50, 2),        --  Seq. 1, F part
-       An_Empty_Slot  (150),
-       A_TT_Work_Slot (20, 5),        --  I part of end of plan
-       An_Empty_Slot  (80),
-       A_TT_Work_Slot (20, 5),        --  F part of end of plan
-       A_Mode_Change_Slot (80) );
+     ( A_TT_Slot (Regular, 50, 1),        --  Single slot for 1st seq. start
+       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Regular, 50, 3),        --  Single slot for 2nd seq. start
+       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Regular, 20, 2),        --  Seq. 1, IMs part
+       A_TT_Slot (Empty, 180),
+       A_TT_Slot (Regular, 50, 4),        --  Seq. 2, IMs part
+       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Continuation, 20, 2),   --  Seq. 1, continuation of Ms part
+       A_TT_Slot (Empty, 180),
+       A_TT_Slot (Terminal, 100, 4),      --  Seq. 2, terminal of Ms part
+       A_TT_Slot (Empty, 100),
+       A_TT_Slot (Terminal, 20, 2),       --  Seq. 1, terminal of Ms part
+       A_TT_Slot (Empty, 180),
+       A_TT_Slot (Regular, 50, 4),        --  Seq. 2, F part
+       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Regular, 50, 2),        --  Seq. 1, F part
+       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Regular, 20, 5),        --  I part of end of plan
+       A_TT_Slot (Empty, 80),
+       A_TT_Slot (Regular, 20, 5),        --  F part of end of plan
+       A_TT_Slot (Mode_Change, 80) );
 
 
    --  Auxiliary for printing times --
