@@ -84,6 +84,10 @@ package body TT_Utilities is
       Start             : Time;
    begin
 
+      if Synced_Init then
+         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
+      end if;
+
       Task_State.Initialize;
 
       loop
@@ -120,6 +124,10 @@ package body TT_Utilities is
       When_Was_Released : Time;
       Jitter            : Time_Span;
    begin
+
+      if Synced_Init then
+         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
+      end if;
 
       Task_State.Initialize;
 
@@ -161,6 +169,10 @@ package body TT_Utilities is
       When_Was_Released : Time;
       Jitter            : Time_Span;
    begin
+
+      if Synced_Init then
+         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
+      end if;
 
       Task_State.Initialize;
 
@@ -212,6 +224,10 @@ package body TT_Utilities is
       When_Was_Released : Time;
       Jitter            : Time_Span;
    begin
+
+      if Synced_Init then
+         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
+      end if;
 
       Task_State.Initialize;
 

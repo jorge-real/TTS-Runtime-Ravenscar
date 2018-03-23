@@ -73,8 +73,9 @@ package TT_Utilities is
    --  Requires 1 slot per job  --
    -------------------------------
    task type Simple_TT_Task
-     (Work_Id    : TT_Work_Id;
-      Task_State : Any_Simple_Task_State)
+     (Work_Id     : TT_Work_Id;
+      Task_State  : Any_Simple_Task_State;
+      Synced_Init : Boolean)
      with Priority => System.Priority'Last - 1;
 
    ---------------------------------
@@ -84,8 +85,9 @@ package TT_Utilities is
    --  one for I, and one for F   --
    ---------------------------------
    task type Initial_Final_TT_Task
-     (Work_Id    : TT_Work_Id;
-      Task_State : Any_Initial_Final_Task_State)
+     (Work_Id     : TT_Work_Id;
+      Task_State  : Any_Initial_Final_Task_State;
+      Synced_Init : Boolean)
      with Priority => System.Priority'Last - 1;
 
    ----------------------------------------------------
@@ -95,8 +97,9 @@ package TT_Utilities is
    --    for I, M(s) and F parts                     --
    ----------------------------------------------------
    task type Initial_Mandatory_Final_TT_Task
-     (Work_Id    : TT_Work_Id;
-      Task_State : Any_Initial_Mandatory_Final_Task_State)
+     (Work_Id     : TT_Work_Id;
+      Task_State  : Any_Initial_Mandatory_Final_Task_State;
+      Synced_Init : Boolean)
      with Priority => System.Priority'Last - 1;
 
    ----------------------------------------------------
@@ -105,8 +108,9 @@ package TT_Utilities is
    --  Requires 2 slots per job, for I and F parts   --
    ----------------------------------------------------
    task type InitialMandatorySliced_Final_TT_Task
-     (Work_Id    : TT_Work_Id;
-      Task_State : Any_Initial_Mandatory_Final_Task_State)
+     (Work_Id     : TT_Work_Id;
+      Task_State  : Any_Initial_Mandatory_Final_Task_State;
+      Synced_Init : Boolean)
      with Priority => System.Priority'Last - 1;
 
 end TT_Utilities;
