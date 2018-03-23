@@ -9,5 +9,3 @@ This is the version cited from paper "Combined Scheduling of Time-Triggered and 
  - The "utilities" folder contains the (ongoing) implementation of a library of TT utilities.
 
  - The "examples" folder contains an example application for thre STM34F4 Discovery board. To observe its output, you can for example use "debug on board" from GPS and see the printed messages in the st-util window.
-
-<a> http://doi.org/10.5281/zenodo.1206197 <\a>
