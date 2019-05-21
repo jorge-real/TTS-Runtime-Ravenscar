@@ -20,7 +20,7 @@ with Ada.Text_IO; use Ada.Text_IO;
 
 with System.BB.Threads.Queues;
 
-package body Ada.Dispatching.TTS is
+package body XAda.Dispatching.TTS is
    use System.BB.Threads;
 
    --  Conservative bound of measured overhead on a STM32F4 Discovery
@@ -454,4 +454,4 @@ package body Ada.Dispatching.TTS is
 
    end Time_Triggered_Scheduler;
 
-end Ada.Dispatching.TTS;
+end XAda.Dispatching.TTS;

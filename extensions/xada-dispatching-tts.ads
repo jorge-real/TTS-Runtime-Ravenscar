@@ -18,7 +18,7 @@ generic
 
    Number_Of_Work_IDs : Positive;
 
-package Ada.Dispatching.TTS is
+package XAda.Dispatching.TTS is
 
    --  Slot types
    type Kind_Of_Slot is (TT_Work_Slot, Empty_Slot, Mode_Change_Slot);
@@ -125,4 +125,4 @@ private
 
    end Time_Triggered_Scheduler;
 
-end Ada.Dispatching.TTS;
+end XAda.Dispatching.TTS;

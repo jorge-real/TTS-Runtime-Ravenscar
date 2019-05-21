@@ -104,6 +104,7 @@ package body TTS_Example_A is
        A_TT_Slot (Regular, 20, 5),        --  F part of end of plan
        A_TT_Slot (Mode_Change, 80) );
 
+
    --  Auxiliary for printing times --
    function Now (Current : Time) return String is
      (Duration'Image ( To_Duration (Current - Epoch) * 1000) & " ms.");

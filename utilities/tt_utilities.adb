@@ -9,7 +9,7 @@ with Ada.Text_IO;     use Ada.Text_IO;
 
 package body TT_Utilities is
 
-   subtype Kind_Of_Slot               is TTS.Kind_Of_Slot;
+   subtype Kind_Of_Slot is TTS.Kind_Of_Slot;
    TT_Work_Slot     : Kind_Of_Slot renames TTS.TT_Work_Slot;
    Empty_Slot       : Kind_Of_Slot renames TTS.Empty_Slot;
    Mode_Change_Slot : Kind_Of_Slot renames TTS.Mode_Change_Slot;
