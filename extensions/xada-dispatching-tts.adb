@@ -1,10 +1,12 @@
 ------------------------------------------------------------
 --
---  ADA . DISPATCHING . TIME-TRIGGERED SCHEDULING
+--  GNAT RUN-TIME EXTENSIONS
 --
---  @file a-distts.adb
+--  XADA . DISPATCHING . TIME-TRIGGERED SCHEDULING
 --
---  @package Ada.Dispatching.TTS (BODY)
+--  @file x-distts.adb / xada-dispatching-tts.adb
+--
+--  @package XAda.Dispatching.TTS (BODY)
 --
 --  @author Jorge Real <jorge@disca.upv.es>
 --  @author Sergio Saez <ssaez@disca.upv.es>
