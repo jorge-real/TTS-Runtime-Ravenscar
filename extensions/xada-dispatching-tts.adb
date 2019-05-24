@@ -20,11 +20,11 @@ with Ada.Real_Time.Timing_Events;  use Ada.Real_Time.Timing_Events;
 
 with Ada.Text_IO; use Ada.Text_IO;
 
-with System.BB.Threads.Queues;
+with System.BB.Threads; use System.BB.Threads;
+with System.TTS_Support; use System.TTS_Support;
 
 package body XAda.Dispatching.TTS is
-   use System.BB.Threads;
-
+   
    --  Conservative bound of measured overhead on a STM32F4 Discovery
    --  Since release jitter is very predictable in this platform (between
    --  23 and 24 us) we charge that overhead at the end of the slot, by
@@ -154,6 +154,7 @@ package body XAda.Dispatching.TTS is
       ----------------------------
 
       procedure Prepare_For_Activation (Work_Id : TT_Work_Id) is
+         Cancelled : Boolean;
       begin
          --  Register the Work_Id with the first task using it.
          --  Use of the Work_Id by another task breaks the model and causes PE
@@ -173,6 +174,7 @@ package body XAda.Dispatching.TTS is
          --  Work has been completed and the caller is about to be suspended
          WCB (Work_Id).Is_Waiting := True;
          WCB (Work_Id).Has_Completed := True;
+         Hold_Event.Cancel_Handler(Cancelled);
 
          --  The task has to execute Sleep after this point
 
@@ -198,6 +200,12 @@ package body XAda.Dispatching.TTS is
          end if;
 
          WCB (Current_Slot.Work_Id).Is_Sliced := True;
+         
+         if Current_Slot.Padding > Time_Span_Zero then
+            Hold_Event.Set_Handler (Next_Slot_Release - Current_Slot.Padding,
+                                    Hold_Handler_Access);
+         end if;                        
+         
       end Continue_Sliced;
 
       --------------------
@@ -208,6 +216,7 @@ package body XAda.Dispatching.TTS is
          Current_Slot : constant Time_Slot :=
            Current_Plan (Current_Slot_Index);
          Base_Priority : System.Priority;
+         Cancelled : Boolean;
       begin
          if Current_Slot.Kind /= TT_Work_Slot then
             raise Program_Error
@@ -222,6 +231,7 @@ package body XAda.Dispatching.TTS is
 
 --           WCB (Work_Id).Has_Completed := True;
          WCB (Current_Slot.Work_Id).Has_Completed := True;
+         Hold_Event.Cancel_Handler(Cancelled);
 
          Base_Priority :=
            WCB (Current_Slot.Work_Id).Work_Thread_Id.Base_Priority;
@@ -269,6 +279,27 @@ package body XAda.Dispatching.TTS is
          NS_Event.Set_Handler (At_Time - Overhead, NS_Handler_Access);
       end Change_Plan;
 
+      ------------------
+      -- Hold_Handler --
+      ------------------
+
+      procedure Hold_Handler (Event : in out Timing_Event) is
+         pragma Unreferenced (Event);
+         Current_Slot      : Time_Slot;
+         Current_WCB       : Work_Control_Block;
+         Current_Thread_Id : Thread_Id;
+      begin
+         
+         Current_Slot := Current_Plan (Current_Slot_Index);
+         Current_WCB := WCB (Current_Slot.Work_Id);
+         Current_Thread_Id := Current_WCB.Work_Thread_Id;
+         
+         if not Current_WCB.Has_Completed then
+            Hold (Current_Thread_Id);
+         end if;
+         
+      end Hold_Handler;
+      
       ----------------
       -- NS_Handler --
       ----------------
@@ -305,27 +336,30 @@ package body XAda.Dispatching.TTS is
                --  First check that all is going well
                Current_Thread_Id := Current_WCB.Work_Thread_Id;
 
-               --  Thread_Self is the currently running thread on this CPU.
-               --  If this assertion fails, the running TT task is using a
-               --  wrong slot, which should never happen
-               pragma Assert (Current_Thread_Id = Thread_Self);
-
                --  Check whether the task is running sliced or this is
                --  a real overrun situation
                if Current_WCB.Is_Sliced then
-                  --  Action: Suspend
-                  --  (Inspired by System.BB.Threads.Sleep)
-                  --  Change thread state to suspended and extract the
-                  --  thread from the list of ready threads
+                  if Current_Slot.Padding > Time_Span_Zero then
+                     if Current_Thread_Id.Hold_Signaled then
+                        raise Program_Error
+                          with ("Overrun in PA of Sliced TT task " &
+                                  Current_Slot.Work_Id'Image);
+                     end if;
+                  else 
+                     --  Thread_Self is the currently running thread on this CPU.
+                     --  If this assertion fails, the running TT task is using a
+                     --  wrong slot, which should never happen
+                     pragma Assert (Current_Thread_Id = Thread_Self);
 
-                  Current_Thread_Id.State := Suspended;
-                  Queues.Extract (Current_Thread_Id);
+                     Hold (Current_Thread_Id, True);
+                  end if;
                   --  Context switch occurs after executing this handler
 
                else
-                  --  Overrun detectd, raise Program_Error
-                  raise Program_Error with ("Overrun in TT task " &
-                                              Current_Slot.Work_Id'Image);
+                  --  Overrun detected, raise Program_Error
+                  raise Program_Error 
+                    with ("Overrun in TT task " &
+                            Current_Slot.Work_Id'Image);
                end if;
 
             end if;
@@ -412,6 +446,12 @@ package body XAda.Dispatching.TTS is
                      WCB (Current_Slot.Work_Id).Has_Completed := False;
                      WCB (Current_Slot.Work_Id).Is_Waiting := False;
                      Set_True (Release_Point (Current_Slot.Work_Id));
+                     
+                     if Current_Slot.Is_Continuation and then
+                       Current_Slot.Padding > Time_Span_Zero then
+                        Hold_Event.Set_Handler (Next_Slot_Release - Current_Slot.Padding,
+                                                Hold_Handler_Access);
+                     end if;                        
 
                   elsif Current_Slot.Is_Optional then
                      --  If the slot is optional, it is not an error if the TT
@@ -436,9 +476,14 @@ package body XAda.Dispatching.TTS is
                   --  Change thread state to runnable and insert it at the tail
                   --    of its active priority, which here implies that the
                   --    thread will be the next to execute
-                  Current_Thread_Id.State := Runnable;
-                  Queues.Insert (Current_Thread_Id);
+                  Continue (Current_Thread_Id);
 
+                  if Current_Slot.Is_Continuation and then
+                    Current_Slot.Padding > Time_Span_Zero then
+                     Hold_Event.Set_Handler (Next_Slot_Release - Current_Slot.Padding,
+                                             Hold_Handler_Access);
+                  end if;                        
+         
                end if;
 
                --  Common actions to process the new slot --

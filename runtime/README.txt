@@ -1,0 +1,5 @@
+'./gnarl/common/s-bbthre.adb' -> '/home/ssaez/GIT/UPV/TTS-Runtime-Ravenscar/runtime/s-bbthre.adb'
+'./gnarl/common/s-bbthre.ads' -> '/home/ssaez/GIT/UPV/TTS-Runtime-Ravenscar/runtime/s-bbthre.ads'
+'./gnarl/common/s-taprob.ads' -> '/home/ssaez/GIT/UPV/TTS-Runtime-Ravenscar/runtime/s-taprob.ads'
+'./gnarl/common/s-taprob.adb' -> '/home/ssaez/GIT/UPV/TTS-Runtime-Ravenscar/runtime/s-taprob.adb'
+'./gnarl/full/s-taskin.ads' -> '/home/ssaez/GIT/UPV/TTS-Runtime-Ravenscar/runtime/s-taskin.ads'
