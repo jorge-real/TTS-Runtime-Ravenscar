@@ -29,23 +29,25 @@ package XAda.Dispatching.TTS is
    --  when they call the scheduler
    type TT_Work_Id is new Positive range 1 .. Number_Of_Work_IDs;
 
-   --  A time slot in the TT plan. We use a variant record because different
-   --  kinds of slots require different types of information
-   type Time_Slot (Kind : Kind_Of_Slot := TT_Work_Slot) is record
+   --  A time slot in the TT plan.
+   type Time_Slot (Kind : Kind_Of_Slot) is tagged record
       Slot_Duration : Ada.Real_Time.Time_Span;
-      case Kind is
-         when TT_Work_Slot =>
-            Work_Id         : TT_Work_Id;
-            Is_Continuation : Boolean := False;
-            Is_Optional     : Boolean := False;
-            Padding         : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
-         when others =>
-            null;
-      end case;
    end record;
 
+   type Time_Slot_Access is access all Time_Slot'Class;
+
+   type Work_Time_Slot (Kind : Kind_Of_Slot) is new Time_Slot(Kind) with
+      record
+         Work_Id         : TT_Work_Id;
+         Is_Continuation : Boolean := False;
+         Is_Optional     : Boolean := False;
+         Padding         : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
+      end record;
+
+   type Work_Time_Slot_Access is access all Work_Time_Slot'Class;
+
    --  Types representing/accessing TT plans
-   type Time_Triggered_Plan        is array (Natural range <>) of Time_Slot;
+   type Time_Triggered_Plan        is array (Natural range <>) of Time_Slot_Access;
    type Time_Triggered_Plan_Access is access all Time_Triggered_Plan;
 
    --  Set new TT plan to start at the end of the next mode change slot
