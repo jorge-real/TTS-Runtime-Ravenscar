@@ -1,3 +1,5 @@
+In the following, '.' means: <GNAT-arm_install-dir>/arm-eabi/include/rts-sources/
+
 './gnarl/common/s-bbthre.adb' -> '/home/ssaez/GIT/UPV/TTS-Runtime-Ravenscar/runtime/s-bbthre.adb'
 './gnarl/common/s-bbthre.ads' -> '/home/ssaez/GIT/UPV/TTS-Runtime-Ravenscar/runtime/s-bbthre.ads'
 './gnarl/common/s-taprob.ads' -> '/home/ssaez/GIT/UPV/TTS-Runtime-Ravenscar/runtime/s-taprob.ads'
