@@ -154,6 +154,9 @@ package body XAda.Dispatching.TTS is
       ----------------------------
 
       procedure Prepare_For_Activation (Work_Id : TT_Work_Id) is
+         Current_Slot : constant Time_Slot_Access :=
+           Current_Plan (Current_Slot_Index);
+         Current_Work_Slot : Work_Time_Slot_Access;
          Cancelled : Boolean;
       begin
          --  Register the Work_Id with the first task using it.
@@ -171,9 +174,13 @@ package body XAda.Dispatching.TTS is
 
          end if;
 
+         if Current_Slot.Kind = TT_Work_Slot then
+            Current_Work_Slot := Work_Time_Slot_Access(Current_Slot);
+            WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
+         end if;
+         
          --  Work has been completed and the caller is about to be suspended
          WCB (Work_Id).Is_Waiting := True;
-         WCB (Work_Id).Has_Completed := True;
          Hold_Event.Cancel_Handler(Cancelled);
 
          --  The task has to execute Sleep after this point
@@ -453,7 +460,8 @@ package body XAda.Dispatching.TTS is
                   --    Wait_For_Activation
 
                   if Current_WCB.Is_Sliced then
-                     --  The completed TT task was running sliced
+                     --  The completed TT task was running sliced and it has
+                     --   completed, so this slot is not needed by the task.
                      null;
 
                   elsif Current_WCB.Is_Waiting then
