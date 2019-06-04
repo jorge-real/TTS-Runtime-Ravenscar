@@ -171,7 +171,6 @@ package body XAda.Dispatching.TTS is
 
             --  Caller was not registered with this Work_Id
             raise Program_Error with ("Work_Id misuse");
-
          end if;
 
          if Current_Slot.all in Work_Slot'Class then
