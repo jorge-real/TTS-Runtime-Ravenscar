@@ -1,5 +1,7 @@
-with XAda.Dispatching.TTS;
+with Ada.Real_Time;
 with System;
+
+with XAda.Dispatching.TTS;
 
 generic
 
@@ -16,6 +18,7 @@ package TT_Utilities is
    --    as in the instantiation to TT_Utilities.
    subtype TT_Work_Id                 is TTS.TT_Work_Id;
    subtype Time_Slot                  is TTS.Time_Slot;
+   subtype Time_Slot_Access           is TTS.Time_Slot_Access;
    subtype Time_Triggered_Plan        is TTS.Time_Triggered_Plan;
    subtype Time_Triggered_Plan_Access is TTS.Time_Triggered_Plan_Access;
 
@@ -54,7 +57,8 @@ package TT_Utilities is
                       Regular,
                       Terminal,
                       Continuation,
-                      Optional
+                      Optional,
+                      Optional_Continuation
                      );
 
    ------------------------------------------------------------
@@ -62,8 +66,9 @@ package TT_Utilities is
    ------------------------------------------------------------
    function A_TT_Slot (Kind             : Slot_Type ;
                        Slot_Duration_MS : Natural;
-                       Work_Id          : TT_Work_Id := TT_Work_Id'Last) return Time_Slot;
-
+                       Work_Id          : TT_Work_Id := TT_Work_Id'Last;
+                       Padding          : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero)
+                       return Time_Slot_Access;
 
    -------------------------------
    --      SIMPLE TT TASK       --

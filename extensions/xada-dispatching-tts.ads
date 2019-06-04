@@ -22,29 +22,38 @@ generic
 
 package XAda.Dispatching.TTS is
 
-   --  Slot types
-   type Kind_Of_Slot is (TT_Work_Slot, Empty_Slot, Mode_Change_Slot);
-
    --  TT tasks use a Work_Id of this type to identify themselves
    --  when they call the scheduler
    type TT_Work_Id is new Positive range 1 .. Number_Of_Work_IDs;
 
-   --  A time slot in the TT plan.
-   type Time_Slot (Kind : Kind_Of_Slot) is tagged record
+   --  An abstract time slot in the TT plan.
+   type Time_Slot is abstract tagged record
       Slot_Duration : Ada.Real_Time.Time_Span;
    end record;
 
    type Time_Slot_Access is access all Time_Slot'Class;
 
-   type Work_Time_Slot (Kind : Kind_Of_Slot) is new Time_Slot(Kind) with
+   -- An empty time slot
+   type Empty_Slot is new Time_Slot with null record;
+   type Empty_Slot_Access is access all Empty_Slot'Class;
+
+   -- A mode change time slot
+   type Mode_Change_Slot is new Time_Slot with null record;
+   type Mode_Change_Slot_Access is access all Mode_Change_Slot'Class;
+
+   -- A work slot
+   type Work_Slot is new Time_Slot with
       record
          Work_Id         : TT_Work_Id;
          Is_Continuation : Boolean := False;
-         Is_Optional     : Boolean := False;
          Padding         : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
       end record;
 
-   type Work_Time_Slot_Access is access all Work_Time_Slot'Class;
+   type Work_Slot_Access is access all Work_Slot'Class;
+
+   -- An optional work slot
+   type Optional_Work_Slot is new Work_Slot with null record;
+   type Optional_Work_Slot_Access is access all Work_Slot'Class;
 
    --  Types representing/accessing TT plans
    type Time_Triggered_Plan        is array (Natural range <>) of Time_Slot_Access;

@@ -9,66 +9,48 @@ with Ada.Text_IO;     use Ada.Text_IO;
 
 package body TT_Utilities is
 
-   subtype Kind_Of_Slot is TTS.Kind_Of_Slot;
-   TT_Work_Slot     : Kind_Of_Slot renames TTS.TT_Work_Slot;
-   Empty_Slot       : Kind_Of_Slot renames TTS.Empty_Slot;
-   Mode_Change_Slot : Kind_Of_Slot renames TTS.Mode_Change_Slot;
-
    ---------------------------------
    --  Constructors of Time_Slots --
    ---------------------------------
 
-   --  Auxiliary for constructing slots --
-   function New_Slot  (Kind : Kind_Of_Slot;
-                       MS : Natural;
-                       Work_Id : TT_Work_Id := TT_Work_Id'Last;
-                       Is_Continuation : Boolean := False;
-                       Is_Optional : Boolean := False) return Time_Slot;
-
+   --  Auxiliary function for constructing slots --
    function A_TT_Slot (Kind : Slot_Type ;
                        Slot_Duration_MS : Natural;
-                       Work_Id : TT_Work_Id := TT_Work_Id'Last) return Time_Slot is
-      Slot_Kind : Kind_Of_Slot;
-      Is_Continuation : Boolean := False;
-      Is_Optional : Boolean := False;
+                       Work_Id : TT_Work_Id := TT_Work_Id'Last;
+                       Padding : Time_Span := Time_Span_Zero) return Time_Slot_Access
+   is
+      New_Slot : Time_Slot_Access;
+      Slot_Duration : Time_Span := Ada.Real_Time.Milliseconds (Slot_Duration_MS);
    begin
       case Kind is
          when Empty =>
-            Slot_Kind := Empty_Slot;
+            New_Slot := new TTS.Empty_Slot'(Slot_Duration => Slot_Duration);
          when Mode_Change =>
-            Slot_Kind := Mode_Change_Slot;
+            New_Slot := new TTS.Mode_Change_Slot'(Slot_Duration => Slot_Duration);
          when Regular | Terminal =>
-            Slot_Kind := TT_Work_Slot;
+            New_Slot := new TTS.Work_Slot'(Slot_Duration => Slot_Duration,
+                                           Work_Id => Work_Id,
+                                           Is_Continuation => False,
+                                           Padding => Padding);
          when Continuation =>
-            Slot_Kind := TT_Work_Slot;
-            Is_Continuation := True;
+            New_Slot := new TTS.Work_Slot'(Slot_Duration => Slot_Duration,
+                                           Work_Id => Work_Id,
+                                           Is_Continuation => True,
+                                           Padding => Padding);
          when Optional =>
-            Slot_Kind := TT_Work_Slot;
-            Is_Optional := True;
+            New_Slot := new TTS.Optional_Work_Slot'(Slot_Duration => Slot_Duration,
+                                                    Work_Id => Work_Id,
+                                                    Is_Continuation => False,
+                                                    Padding => Padding);
+         when Optional_Continuation =>
+            New_Slot := new TTS.Optional_Work_Slot'(Slot_Duration => Slot_Duration,
+                                                    Work_Id => Work_Id,
+                                                    Is_Continuation => True,
+                                                    Padding => Padding);
       end case;
 
-      return New_Slot(Slot_Kind, Slot_Duration_MS, Work_Id, Is_Continuation, Is_Optional);
+      return New_Slot;
    end A_TT_Slot;
-
-   function New_Slot (Kind : Kind_Of_Slot;
-                      MS  : Natural;
-                      Work_Id : TT_Work_Id := TT_Work_Id'Last;
-                      Is_Continuation : Boolean := False;
-                      Is_Optional : Boolean := False) return Time_Slot
-   is
-      Slot : Time_Slot (Kind);
-   begin
-      Slot.Slot_Duration := Ada.Real_Time.Milliseconds (MS);
-      case Slot.Kind is
-         when TT_Work_Slot =>
-            Slot.Work_Id := Work_Id;
-            Slot.Is_Continuation := Is_Continuation;
-            Slot.Is_Optional := Is_Optional;
-         when others =>
-            null;
-      end case;
-      return Slot;
-   end New_Slot;
 
    -----------------------------------
    --  TIME-TRIGGERED TASK PATTERNS --
