@@ -2,7 +2,7 @@
 Ravenscar implementation at the runtime level of a Time-Triggered scheduler.
 
 Version v0.2.0.
-This is the version cited from paper "Combined Scheduling of Time-Triggered and Priority-Based Task Sets in Ravenscar", to appear in the proceedings of the 23rd International Conference on Reliable Software Technologies - Ada-Europe 2018, in June 2018.
+This is the version cited from paper "Combined Scheduling of Time-Triggered and Priority-Based Task Sets in Ravenscar", in proceedings of the 23rd International Conference on Reliable Software Technologies - Ada-Europe 2018.
 
  - The "runtime" folder contains the latest version of the modified/added runtime source files.
 
