@@ -1,5 +1,6 @@
 with Ada.Real_Time; use Ada.Real_Time;
 with TT_Utilities;
+with Logging_Support;
 with Ada.Text_IO; use Ada.Text_IO;
 with Epoch_Support; use Epoch_Support;
 
@@ -107,7 +108,7 @@ package body TTS_Example_A is
 
    --  Auxiliary for printing times --
    function Now (Current : Time) return String is
-     (Duration'Image ( To_Duration (Current - Epoch) * 1000) & " ms.");
+     (Duration'Image ( To_Duration (Current - TTS.Get_Last_Plan_Release) * 1000) & " ms.");
 
    --  Actions of sequence initialisations
    procedure Main_Code (S : in out First_Init_Task) is  --  Simple_TT task with ID = 1
@@ -131,8 +132,12 @@ package body TTS_Example_A is
 
    procedure Mandatory_Code (S : in out First_IMF_Task) is
    begin
-      while S.Counter < 300_000 loop
+      Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
+      while S.Counter < 200_000 loop
          S.Counter := S.Counter + 1;
+         if S.Counter mod 20_000 = 0 then
+            Put_Line ("First_IMF_Task.Mandatory_Code sliced step " & Now (Clock));
+         end if;
       end loop;
       Put_Line ("First_IMF_Task.Mandatory_Code sliced ended at " & Now (Clock));
    end Mandatory_Code;
@@ -152,6 +157,7 @@ package body TTS_Example_A is
 
    procedure Mandatory_Code (S : in out Second_IMF_Task) is
    begin
+      Put_Line ("Second_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
       while S.Counter < 100_000 loop
          S.Counter := S.Counter + 1;
       end loop;

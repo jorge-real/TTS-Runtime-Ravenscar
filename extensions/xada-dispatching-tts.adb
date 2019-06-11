@@ -97,21 +97,15 @@ package body XAda.Dispatching.TTS is
       Time_Triggered_Scheduler.Leave_TT_Level;
    end Leave_TT_Level;
 
-   --------------------
-   -- Skip_Next_Slot --
-   --------------------
-
-   procedure Skip_Next_Slot
-     (Work_Id : TT_Work_Id) is
-      Must_Leave : Boolean;
+   ---------------------------
+   -- Get_Last_Plan_Release --
+   ---------------------------
+   
+   function Get_Last_Plan_Release return Ada.Real_Time.Time is
    begin
-      Time_Triggered_Scheduler.Skip_Next_Slot (Work_Id, Must_Leave);
-
-      if Must_Leave then
-         Leave_TT_Level;
-      end if;
-   end Skip_Next_Slot;
-
+      return Time_Triggered_Scheduler.Get_Last_Plan_Release;
+   end Get_Last_Plan_Release;
+   
    ------------------------------
    -- Time_Triggered_Scheduler --
    ------------------------------
@@ -254,33 +248,6 @@ package body XAda.Dispatching.TTS is
 
       end Leave_TT_Level;
 
-      --------------------
-      -- Skip_Next_Slot --
-      --------------------
-
-      procedure Skip_Next_Slot
-        (Work_Id : TT_Work_Id;
-         Must_Leave : out Boolean)
-      is
-         Current_Slot : constant Time_Slot_Access :=
-           Current_Plan (Current_Slot_Index);
-         Current_Work_Slot : Work_Slot_Access;
-      begin
-
-         if WCB (Work_Id).Work_Thread_Id /= Thread_Self then
-            raise Program_Error
-              with ("Running Task does not correspond to Work_Id " &
-                      Work_Id'Image);
-         end if;
-         
-         Current_Work_Slot := Work_Slot_Access(Current_Slot);
-         
-         Must_Leave := (Current_Work_Slot.Work_Id = Work_Id);
-
-         WCB (Work_Id).Is_Sliced := True;
-
-      end Skip_Next_Slot;
-
       -----------------
       -- Change_Plan --
       -----------------
@@ -297,6 +264,15 @@ package body XAda.Dispatching.TTS is
          NS_Event.Set_Handler (At_Time - Overhead, NS_Handler_Access);
       end Change_Plan;
 
+      ---------------------------
+      -- Get_Last_Plan_Release --
+      ---------------------------
+   
+      function Get_Last_Plan_Release return Ada.Real_Time.Time is
+      begin
+         return First_Slot_Release;
+      end Get_Last_Plan_Release;
+      
       ------------------
       -- Hold_Handler --
       ------------------
@@ -399,6 +375,9 @@ package body XAda.Dispatching.TTS is
 
          --  Update current slot index
          Current_Slot_Index := Next_Slot_Index;
+         if Current_Slot_Index = Current_Plan.all'First then
+            First_Slot_Release := Now;
+         end if;
 
          --  Obtain next slot index. The plan is repeated circularly
          if Next_Slot_Index < Current_Plan.all'Last then

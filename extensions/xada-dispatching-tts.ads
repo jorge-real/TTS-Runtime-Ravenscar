@@ -78,11 +78,8 @@ package XAda.Dispatching.TTS is
    --   there is no more work to do at TT priority level
    procedure Leave_TT_Level;
 
-   --  TT works use this procedure to inform the TT scheduler that
-   --   the next slot is not required. It can be used from PB-level.
-   --  If it is used at TT-level, it implies a Leave_TT_Level action
-   procedure Skip_Next_Slot
-     (Work_Id : TT_Work_Id);
+   --  Returns the last time the first slot of the plan was released
+   function Get_Last_Plan_Release return Ada.Real_Time.Time;
 
 private
 
@@ -103,10 +100,8 @@ private
       --  Inform the scheduler that you have no more work as a TT task
       procedure Leave_TT_Level;
 
-      --  Inform the scheduler that the next slot is not required
-      procedure Skip_Next_Slot
-        (Work_Id    : TT_Work_Id;
-         Must_Leave : out Boolean);
+      --  Returns the last time the first slot of the plan was released
+      function Get_Last_Plan_Release return Ada.Real_Time.Time;
 
    private
       --  New slot timing event
@@ -149,6 +144,9 @@ private
 
       --  Start time of next slot
       Next_Slot_Release  : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
+
+      --  Start time of the first slot
+      First_Slot_Release : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
    end Time_Triggered_Scheduler;
 

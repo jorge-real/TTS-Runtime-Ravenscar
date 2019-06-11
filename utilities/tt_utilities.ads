@@ -22,8 +22,10 @@ package TT_Utilities is
    subtype Time_Triggered_Plan        is TTS.Time_Triggered_Plan;
    subtype Time_Triggered_Plan_Access is TTS.Time_Triggered_Plan_Access;
 
-      --  Ditto for procedure Set_Plan
+   --  Ditto for procedure Set_Plan
    procedure Set_Plan (TTP : Time_Triggered_Plan_Access) renames TTS.Set_Plan;
+   --  Ditto for function Get_last_Plan_Release
+   function Get_Last_Plan_Release return Ada.Real_Time.Time renames TTS.Get_Last_Plan_Release;
 
    -- Simple Task State. Initialize + Code
    type Simple_Task_State is abstract tagged null record;
