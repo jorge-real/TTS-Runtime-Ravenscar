@@ -36,7 +36,7 @@ do
     
     f=${SRCDIR}/$i
     if [ -f $f ] ; then
-	if [ ! ${f}.org ] ; then
+	if [ ! -f ${f}.org ] ; then
 	    cp -v ${f} ${f}.org
 	else
 	    echo "File '${f}' already backed up"
