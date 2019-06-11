@@ -154,8 +154,7 @@ package body XAda.Dispatching.TTS is
       ----------------------------
 
       procedure Prepare_For_Activation (Work_Id : TT_Work_Id) is
-         Current_Slot : constant Time_Slot_Access :=
-           Current_Plan (Current_Slot_Index);
+         Current_Slot : Time_Slot_Access;
          Current_Work_Slot : Work_Slot_Access;
          Cancelled : Boolean;
       begin
@@ -173,11 +172,15 @@ package body XAda.Dispatching.TTS is
             raise Program_Error with ("Work_Id misuse");
          end if;
 
-         if Current_Slot.all in Work_Slot'Class then
-            Current_Work_Slot := Work_Slot_Access(Current_Slot);
-            WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
+         if Current_Plan /= null then
+            Current_Slot := Current_Plan (Current_Slot_Index);
+            
+            if Current_Slot.all in Work_Slot'Class then
+               Current_Work_Slot := Work_Slot_Access(Current_Slot);
+               WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
+            end if;
          end if;
-         
+            
          --  Work has been completed and the caller is about to be suspended
          WCB (Work_Id).Is_Waiting := True;
          Hold_Event.Cancel_Handler(Cancelled);
