@@ -10,7 +10,4 @@ package System.TTS_Support is
    function Is_Held (T : System.BB.Threads.Thread_Id)
                    return Boolean;
 
-   procedure Update_Priority (Thread : System.BB.Threads.Thread_Id;
-                              Priority : Integer);
-
 end System.TTS_Support;

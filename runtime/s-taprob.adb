@@ -36,15 +36,15 @@ with System.Task_Primitives.Operations;
 --           Get_Priority
 --           Self
 
-with System.TTS_Support;
 with System.BB.Threads;
+with System.TTS_Support;
 
 package body System.Tasking.Protected_Objects is
 
    use System.Task_Primitives.Operations;
    use System.Multiprocessors;
-   use System.TTS_Support;
    use System.BB.Threads;
+   use System.TTS_Support;
 
    Multiprocessor : constant Boolean := CPU'Range_Length /= 1;
    --  Set true if on multiprocessor (more than one CPU)
@@ -170,12 +170,13 @@ package body System.Tasking.Protected_Objects is
          Multiprocessors.Fair_Locks.Unlock (Object.Lock);
       end if;
 
-      if Self_Id.Common.Protected_Action_Nesting > 0 then
+      if T_Id.Hold_Signaled and then
+         Self_Id.Common.Protected_Action_Nesting = 0
+      then
+         T_Id.Active_Priority := Caller_Priority;
+         Hold (T_Id);
+      else
          Set_Priority (Self_Id, Caller_Priority);
-      elsif T_Id.Hold_Signaled then
-         Self_Id.Common.State := Asynchronous_Hold;
-         Update_Priority (T_Id, Held_Priority);
-         T_Id.Hold_Signaled := False;
       end if;
    end Unlock;
 
