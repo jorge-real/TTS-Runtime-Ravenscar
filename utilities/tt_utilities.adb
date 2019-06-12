@@ -16,7 +16,7 @@ package body TT_Utilities is
    --  Auxiliary function for constructing slots --
    function A_TT_Slot (Kind : Slot_Type ;
                        Slot_Duration_MS : Natural;
-                       Work_Id : TT_Work_Id := TT_Work_Id'Last;
+                       Slot_Id : Positive := Positive'Last;
                        Padding : Time_Span := Time_Span_Zero) return Time_Slot_Access
    is
       New_Slot : Time_Slot_Access;
@@ -29,24 +29,27 @@ package body TT_Utilities is
             New_Slot := new TTS.Mode_Change_Slot'(Slot_Duration => Slot_Duration);
          when Regular | Terminal =>
             New_Slot := new TTS.Work_Slot'(Slot_Duration => Slot_Duration,
-                                           Work_Id => Work_Id,
+                                           Work_Id => TT_Work_Id(Slot_Id),
                                            Is_Continuation => False,
                                            Padding => Padding);
          when Continuation =>
             New_Slot := new TTS.Work_Slot'(Slot_Duration => Slot_Duration,
-                                           Work_Id => Work_Id,
+                                           Work_Id => TT_Work_Id(Slot_Id),
                                            Is_Continuation => True,
                                            Padding => Padding);
          when Optional =>
             New_Slot := new TTS.Optional_Work_Slot'(Slot_Duration => Slot_Duration,
-                                                    Work_Id => Work_Id,
+                                                    Work_Id => TT_Work_Id(Slot_Id),
                                                     Is_Continuation => False,
                                                     Padding => Padding);
          when Optional_Continuation =>
             New_Slot := new TTS.Optional_Work_Slot'(Slot_Duration => Slot_Duration,
-                                                    Work_Id => Work_Id,
+                                                    Work_Id => TT_Work_Id(Slot_Id),
                                                     Is_Continuation => True,
                                                     Padding => Padding);
+         when Sync =>
+            New_Slot := new TTS.Sync_Slot'(Slot_Duration => Slot_Duration,
+                                           Sync_Id => TT_Sync_Id(Slot_Id));
       end case;
 
       return New_Slot;
@@ -257,5 +260,53 @@ package body TT_Utilities is
          Put_Line ("TT worker W" & Character'Val (Character'Pos ('0') + Integer (Work_Id)) &
                      ": " & Exception_Message (E));
    end InitialMandatorySliced_Final_TT_Task;
+
+
+   -------------------------------------
+   -- SyncedP_OptionalFinal_ET_Task --
+   -------------------------------------
+
+   task body SyncedP_OptionalFinal_ET_Task is
+      When_Was_Released : Time;
+      Jitter            : Time_Span;
+   begin
+
+      if Synced_Init then
+         TTS.Wait_For_Sync (Sync_Id, When_Was_Released);
+      end if;
+
+      Task_State.Initialize;
+
+      loop
+
+         TTS.Wait_For_Sync (Sync_Id, When_Was_Released);
+
+         --  Log --
+         Jitter := Clock - When_Was_Released;
+         Log (No_Event, "|---> Jitter of P Worker" & Integer'Image (Integer (Sync_Id)) &
+                       " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+         --  Log --
+
+         Task_State.Synced_Code;
+
+         if (Task_State.Final_Condition) then
+            TTS.Wait_For_Activation (Work_Id, When_Was_Released);
+
+            --  Log --
+            Jitter := Clock - When_Was_Released;
+            Log (No_Event, "|---> Jitter of F Worker" & Integer'Image (Integer (Work_Id)) &
+                   " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+            --  Log --
+
+            Task_State.Final_Code;
+         end if;
+
+      end loop;
+
+   exception
+      when E : others =>
+         Put_Line ("TT worker W" & Character'Val (Character'Pos ('0') + Integer (Work_Id)) &
+                     ": " & Exception_Message (E));
+   end SyncedP_OptionalFinal_ET_Task;
 
 end TT_Utilities;

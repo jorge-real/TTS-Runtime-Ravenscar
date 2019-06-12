@@ -38,7 +38,6 @@ package body XAda.Dispatching.TTS is
       Is_Waiting      : Boolean   := False;    --  Task is waiting for release
       Is_Sliced       : Boolean   := False;    --  Task is in a sliced sequence
       Work_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlying thread id
-      --  This one is just for jitter instrumentation
       Last_Release    : Time      := Time_Last; -- Time of last release
    end record;
 
@@ -47,6 +46,18 @@ package body XAda.Dispatching.TTS is
 
    --  Array of suspension objects for TT tasks to wait for activation
    Release_Point : array (TT_Work_Id) of Suspension_Object;
+
+   --  Run time TT sync info
+   type Sync_Control_Block is record
+      Sync_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlying thread id
+      Last_Release    : Time      := Time_Last; -- Time of last release
+   end record;
+
+   --  Array of Work_Control_Blocks
+   SCB : array (TT_Sync_Id) of aliased Sync_Control_Block;
+
+   --  Array of suspension objects for ET tasks to wait for synchronization
+   Sync_Point : array (TT_Sync_Id) of Suspension_Object;
 
    ----------------
    --  Set_Plan  --
@@ -69,6 +80,7 @@ package body XAda.Dispatching.TTS is
       --  priority when the calling task has previuosly called Leave_TT_Level
       Set_Priority (System.Priority'Last);
 
+      --  Inform the TT scheduler the task is going to wait for activation
       Time_Triggered_Scheduler.Prepare_For_Activation (Work_Id);
 
       --  Suspend until the next slot for Work_Id starts
@@ -106,6 +118,27 @@ package body XAda.Dispatching.TTS is
       return Time_Triggered_Scheduler.Get_Last_Plan_Release;
    end Get_Last_Plan_Release;
    
+   --------------------
+   --  Wait_For_Sync --
+   --------------------
+
+   procedure Wait_For_Sync
+     (Sync_Id : TT_Sync_Id;
+      When_Was_Released : out Time) is
+   begin
+      --  Inform the TT scheduler the ET task has reached the sync point
+      Time_Triggered_Scheduler.Prepare_For_Sync (Sync_Id);
+
+      --  Suspend until the next sync slot for Sync_Id starts
+      --  If the sync point has been already reached in the plan, 
+      --    the SO is open and the ET task will not suspend  
+      Suspend_Until_True (Sync_Point (Sync_Id));
+
+      --  Scheduler updated Last_Release when it released the sync'ed task
+      When_Was_Released := SCB (Sync_Id).Last_Release;
+
+   end Wait_For_Sync;
+
    ------------------------------
    -- Time_Triggered_Scheduler --
    ------------------------------
@@ -179,8 +212,7 @@ package body XAda.Dispatching.TTS is
          WCB (Work_Id).Is_Waiting := True;
          Hold_Event.Cancel_Handler(Cancelled);
 
-         --  The task has to execute Sleep after this point
-
+         --  The task has to execute Suspend_Until_True after this point
       end Prepare_For_Activation;
 
       ---------------------
@@ -273,6 +305,40 @@ package body XAda.Dispatching.TTS is
          return First_Slot_Release;
       end Get_Last_Plan_Release;
       
+      ----------------------
+      -- Prepare_For_Sync --
+      ----------------------
+
+      procedure Prepare_For_Sync (Sync_Id : TT_Sync_Id) is
+         Current_Slot : Time_Slot_Access;
+         Current_Work_Slot : Work_Slot_Access;
+      begin
+         --  Register the Sync_Id with the first task using it.
+         --  Use of the Sync_Id by another task breaks the model and causes PE
+         if SCB (Sync_Id).Sync_Thread_Id = Null_Thread_Id then
+
+            --  First time WFS called with this Sync_Id -> Register caller
+            --  SCB (Sync_Id).Work_Task_Id := Current_Task;
+            SCB (Sync_Id).Sync_Thread_Id := Thread_Self;
+
+         elsif  SCB (Sync_Id).Sync_Thread_Id /= Thread_Self then
+
+            --  Caller was not registered with this Sync_Id
+            raise Program_Error with ("Sync_Id misuse");
+         end if;
+
+         if Current_Plan /= null then
+            Current_Slot := Current_Plan (Current_Slot_Index);
+            
+            if Current_Slot.all in Work_Slot'Class then
+               Current_Work_Slot := Work_Slot_Access(Current_Slot);
+               WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
+            end if;
+         end if;
+            
+         --  The task has to execute Suspend_Until_True after this point
+      end Prepare_For_Sync;
+
       ------------------
       -- Hold_Handler --
       ------------------
@@ -310,6 +376,7 @@ package body XAda.Dispatching.TTS is
          Current_Slot      : Time_Slot_Access;
          Current_Work_Slot : Work_Slot_Access;
          Current_WCB       : Work_Control_Block;
+         Current_Sync_Slot : Sync_Slot_Access;
          Current_Thread_Id : Thread_Id;
          Now               : Time;
       begin
@@ -416,6 +483,20 @@ package body XAda.Dispatching.TTS is
             NS_Event.Set_Handler (Next_Slot_Release - Overhead,
                                   NS_Handler_Access);
 
+         elsif Current_Slot.all in Sync_Slot'Class then
+            ----------------------------
+            --  Process an Sync_Slot  --
+            ----------------------------
+
+            Current_Sync_Slot := Sync_Slot_Access(Current_Slot);
+            SCB (Current_Sync_Slot.Sync_Id).Last_Release := Now;
+
+            Set_True (Sync_Point (Current_Sync_Slot.Sync_Id));
+
+            --  Set the handler for the next scheduling point
+            NS_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                  NS_Handler_Access);
+
          elsif Current_Slot.all in Work_Slot'Class then
             -----------------------------
             --  Process a Work_Slot --
@@ -424,15 +505,7 @@ package body XAda.Dispatching.TTS is
             Current_Work_Slot := Work_Slot_Access(Current_Slot);
             Current_WCB := WCB (Current_Work_Slot.Work_Id);
             Current_Thread_Id := Current_WCB.Work_Thread_Id;
-
-            --  Check whether the TT task has already registered, i.e.,
-            --  it has called Wait_For_Activation. Raise PE otherwise
-            if Current_Thread_Id = Null_Thread_Id then
-               raise Program_Error
-                 with ("No TT task has registered for Work_Id " &
-                         Current_Work_Slot.Work_Id'Image);
-            end if;
-
+            
             --  Check what needs be done to the TT task of the new slot
             if Current_WCB.Has_Completed then
 
@@ -464,7 +537,6 @@ package body XAda.Dispatching.TTS is
                   --  If the slot is optional, it is not an error if the TT
                   --    task has not invoked Wait_For_Activation
                   null;
-
                else
                   --  Task is not waiting for its next activation.
                   --  It must have abandoned the TT Level or it is waiting in

@@ -19,12 +19,17 @@ private with Ada.Real_Time.Timing_Events, System;
 generic
 
    Number_Of_Work_IDs : Positive;
+   Number_Of_Sync_IDs : Positive := 1;
 
 package XAda.Dispatching.TTS is
 
    --  TT tasks use a Work_Id of this type to identify themselves
    --  when they call the scheduler
    type TT_Work_Id is new Positive range 1 .. Number_Of_Work_IDs;
+
+   --  ET tasks use a Sync_Id of this type to identify themselves
+   --  when they call the scheduler
+   type TT_Sync_Id is new Positive range 1 .. Number_Of_Sync_IDs;
 
    --  An abstract time slot in the TT plan.
    type Time_Slot is abstract tagged record
@@ -40,6 +45,14 @@ package XAda.Dispatching.TTS is
    -- A mode change time slot
    type Mode_Change_Slot is new Time_Slot with null record;
    type Mode_Change_Slot_Access is access all Mode_Change_Slot'Class;
+
+   -- A sync slot
+   type Sync_Slot is new Time_Slot with
+      record
+         Sync_Id         : TT_Sync_Id;
+      end record;
+
+   type Sync_Slot_Access is access all Sync_Slot'Class;
 
    -- A work slot
    type Work_Slot is new Time_Slot with
@@ -81,6 +94,11 @@ package XAda.Dispatching.TTS is
    --  Returns the last time the first slot of the plan was released
    function Get_Last_Plan_Release return Ada.Real_Time.Time;
 
+   --  ET works use this procedure to wait for their next asigned sync slot
+   procedure Wait_For_Sync
+     (Sync_Id           : TT_Sync_Id;
+      When_Was_Released : out Ada.Real_Time.Time);
+
 private
 
    protected Time_Triggered_Scheduler
@@ -102,6 +120,10 @@ private
 
       --  Returns the last time the first slot of the plan was released
       function Get_Last_Plan_Release return Ada.Real_Time.Time;
+
+      --  Prepare work to wait for next synchronization point
+      procedure Prepare_For_Sync
+        (Sync_Id : TT_Sync_Id);
 
    private
       --  New slot timing event
@@ -146,7 +168,7 @@ private
       Next_Slot_Release  : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
       --  Start time of the first slot
-      First_Slot_Release : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
+      First_Slot_Release : Ada.Real_Time.Time := Ada.Real_Time.Time_First;
 
    end Time_Triggered_Scheduler;
 

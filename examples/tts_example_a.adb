@@ -6,9 +6,10 @@ with Epoch_Support; use Epoch_Support;
 
 package body TTS_Example_A is
 
-   Number_Of_Work_Ids : constant := 5;
+   Number_Of_Work_Ids : constant := 6;
+   Number_Of_Sync_Ids : constant := 1;
 
-   package TT_Utils is new TT_Utilities (Number_Of_Work_Ids);
+   package TT_Utils is new TT_Utilities (Number_Of_Work_Ids, Number_Of_Sync_Ids);
    use TT_Utils;
 
    --  Variables incremented by two TT sequences of IMs-F tasks
@@ -79,6 +80,21 @@ package body TTS_Example_A is
       Task_State => Wk5_Code'Access,
       Synced_Init => False);
 
+   type Synced_ET_Task is new SyncedP_OptionalFinal_Task_State with
+      record
+         Counter : Natural := 0;
+      end record;
+   procedure Initialize (S : in out Synced_ET_Task) is null;
+   procedure Synced_Code (S : in out Synced_ET_Task);
+   function Final_Condition (S : in out Synced_ET_Task) return Boolean;
+   procedure Final_Code (S : in out Synced_ET_Task);
+
+   Wk6_Code : aliased Synced_ET_Task;
+   Wk6 : SyncedP_OptionalFinal_ET_Task
+     (Sync_Id => 1,
+      Work_Id => 6,
+      Task_State => Wk6_Code'Access,
+      Synced_Init => False);
 
    --  The TT plan
    TT_Plan : aliased Time_Triggered_Plan :=
@@ -97,13 +113,16 @@ package body TTS_Example_A is
        A_TT_Slot (Terminal, 20, 2),       --  Seq. 1, terminal of Ms part
        A_TT_Slot (Empty, 180),
        A_TT_Slot (Regular, 50, 4),        --  Seq. 2, F part
-       A_TT_Slot (Empty, 150),
+       A_TT_Slot (Sync, 150, 1),          --  Sync Point for ET Task 1
+       -- A_TT_Slot (Empty, 150),
        A_TT_Slot (Regular, 50, 2),        --  Seq. 1, F part
        A_TT_Slot (Empty, 150),
        A_TT_Slot (Regular, 20, 5),        --  I part of end of plan
        A_TT_Slot (Empty, 80),
        A_TT_Slot (Regular, 20, 5),        --  F part of end of plan
-       A_TT_Slot (Mode_Change, 80) );
+       A_TT_Slot (Mode_Change, 40),
+       A_TT_Slot (Optional, 40, 6)         --  F part of synced ET Task 1
+      );
 
 
    --  Auxiliary for printing times --
@@ -173,15 +192,35 @@ package body TTS_Example_A is
    --  End of plan actions: I-F task with ID = 4
    procedure Initial_Code (S : in out End_Of_Plan_IF_Task) is
    begin
+      Put_Line ("End_Of_Plan_IF_Task.Initial_Code at" & Now (Clock));
       Put_Line ("Value of Var_1 =" & Var_1'Image);
       Put_Line ("Value of Var_2 =" & Var_2'Image);
-      Put_Line ("Current Time =" & Now (Clock));
    end Initial_Code;
 
    procedure Final_Code (S : in out End_Of_Plan_IF_Task) is
    begin
+      Put_Line ("End_Of_Plan_IF_Task.Final_Code at" & Now (Clock));
       Put_Line ("Starting all over again!");
-      Put_Line ("Current Time =" & Now (Clock));
+   end Final_Code;
+
+   --  End of plan actions: P-[F] task with ID = 1,6
+   procedure Synced_Code (S : in out Synced_ET_Task) is
+   begin
+      S.Counter := S.Counter + 1;
+      Put_Line ("Synced_ET_Task.Synced_Code with counter = " & S.Counter'Image  & " at" & Now (Clock));
+   end Synced_Code;
+
+   function Final_Condition (S : in out Synced_ET_Task) return Boolean is
+      Condition : Boolean;
+   begin
+      Condition := (S.Counter mod 2 = 0);
+      Put_Line ("Synced_ET_Task.Final_Condition with condition = " & Condition'Image  & " at" & Now (Clock));
+      return Condition;
+   end Final_Condition;
+
+   procedure Final_Code (S : in out Synced_ET_Task) is
+   begin
+      Put_Line ("Synced_ET_Task.Final_Code with counter = " & S.Counter'Image  & " at" & Now (Clock));
    end Final_Code;
 
    ----------

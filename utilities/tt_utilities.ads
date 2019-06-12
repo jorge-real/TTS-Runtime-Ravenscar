@@ -6,10 +6,11 @@ with XAda.Dispatching.TTS;
 generic
 
    Number_Of_Work_Ids : Positive;
+   Number_Of_Sync_Ids : Positive := 1;
 
 package TT_Utilities is
 
-   package TTS is new XAda.Dispatching.TTS (Number_Of_Work_Ids);
+   package TTS is new XAda.Dispatching.TTS (Number_Of_Work_Ids, Number_Of_Sync_Ids);
 
    --  The following subtype declarations are user bypasses to the types
    --    defined in TTS, a concrete instance of Ada.Dispatching.TTS.
@@ -17,6 +18,7 @@ package TT_Utilities is
    --    also Ada.Dispatching.TTS with the exact same Number_Of_Work_Ids
    --    as in the instantiation to TT_Utilities.
    subtype TT_Work_Id                 is TTS.TT_Work_Id;
+   subtype TT_Sync_Id                 is TTS.TT_Sync_Id;
    subtype Time_Slot                  is TTS.Time_Slot;
    subtype Time_Slot_Access           is TTS.Time_Slot_Access;
    subtype Time_Triggered_Plan        is TTS.Time_Triggered_Plan;
@@ -51,6 +53,15 @@ package TT_Utilities is
 
    type Any_Initial_Mandatory_Final_Task_State is access all Initial_Mandatory_Final_Task_State'Class;
 
+   -- SyncedP_OptionalFinal Task State. Initialize + Synced_Code + [Condition] Final_Code
+   type SyncedP_OptionalFinal_Task_State is abstract tagged null record;
+   procedure Initialize (S : in out SyncedP_OptionalFinal_Task_State) is abstract;
+   procedure Synced_Code (S : in out SyncedP_OptionalFinal_Task_State) is abstract;
+   function Final_Condition (S : in out SyncedP_OptionalFinal_Task_State) return Boolean is abstract;
+   procedure Final_Code (S : in out SyncedP_OptionalFinal_Task_State) is abstract;
+
+   type Any_SyncedP_OptionalFinal_Task_State is access all SyncedP_OptionalFinal_Task_State'Class;
+
    ---------------------------------------------
    --  Time_Slot kinds for building TT plans  --
    ---------------------------------------------
@@ -60,7 +71,8 @@ package TT_Utilities is
                       Terminal,
                       Continuation,
                       Optional,
-                      Optional_Continuation
+                      Optional_Continuation,
+                      Sync
                      );
 
    ------------------------------------------------------------
@@ -68,7 +80,7 @@ package TT_Utilities is
    ------------------------------------------------------------
    function A_TT_Slot (Kind             : Slot_Type ;
                        Slot_Duration_MS : Natural;
-                       Work_Id          : TT_Work_Id := TT_Work_Id'Last;
+                       Slot_Id          : Positive := Positive'Last;
                        Padding          : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero)
                        return Time_Slot_Access;
 
@@ -120,5 +132,18 @@ package TT_Utilities is
       Task_State  : Any_Initial_Mandatory_Final_Task_State;
       Synced_Init : Boolean)
      with Priority => System.Priority'Last - 1;
+
+   ----------------------------------------------------
+   --  SYNC_P - [FINAL] ET TASK                      --
+   --                                                --
+   --  Requires one sync slot for starting the       --
+   --    priority-based part, then ending with an    --
+   --    optional work slot for the final part       --
+   ----------------------------------------------------
+   task type SyncedP_OptionalFinal_ET_Task
+     (Sync_Id     : TT_Sync_Id;
+      Work_Id     : TT_Work_Id;
+      Task_State  : Any_SyncedP_OptionalFinal_Task_State;
+      Synced_Init : Boolean);
 
 end TT_Utilities;
