@@ -80,17 +80,17 @@ package body TTS_Example_A is
       Task_State => Wk5_Code'Access,
       Synced_Init => False);
 
-   type Synced_ET_Task is new SyncedP_OptionalFinal_Task_State with
+   type Synced_ET_Task is new Initial_OptionalFinal_Task_State with
       record
          Counter : Natural := 0;
       end record;
    procedure Initialize (S : in out Synced_ET_Task) is null;
-   procedure Synced_Code (S : in out Synced_ET_Task);
-   function Final_Condition (S : in out Synced_ET_Task) return Boolean;
+   procedure Initial_Code (S : in out Synced_ET_Task);
+   function Final_Is_Required (S : in out Synced_ET_Task) return Boolean;
    procedure Final_Code (S : in out Synced_ET_Task);
 
    Wk6_Code : aliased Synced_ET_Task;
-   Wk6 : SyncedP_OptionalFinal_ET_Task
+   Wk6 : SyncedInitial_OptionalFinal_ET_Task
      (Sync_Id => 1,
       Work_Id => 6,
       Task_State => Wk6_Code'Access,
@@ -204,19 +204,19 @@ package body TTS_Example_A is
    end Final_Code;
 
    --  End of plan actions: P-[F] task with ID = 1,6
-   procedure Synced_Code (S : in out Synced_ET_Task) is
+   procedure Initial_Code (S : in out Synced_ET_Task) is
    begin
       S.Counter := S.Counter + 1;
       Put_Line ("Synced_ET_Task.Synced_Code with counter = " & S.Counter'Image  & " at" & Now (Clock));
-   end Synced_Code;
+   end Initial_Code;
 
-   function Final_Condition (S : in out Synced_ET_Task) return Boolean is
+   function Final_Is_Required (S : in out Synced_ET_Task) return Boolean is
       Condition : Boolean;
    begin
       Condition := (S.Counter mod 2 = 0);
-      Put_Line ("Synced_ET_Task.Final_Condition with condition = " & Condition'Image  & " at" & Now (Clock));
+      Put_Line ("Synced_ET_Task.Final_Is_Required with condition = " & Condition'Image  & " at" & Now (Clock));
       return Condition;
-   end Final_Condition;
+   end Final_Is_Required;
 
    procedure Final_Code (S : in out Synced_ET_Task) is
    begin

@@ -164,7 +164,7 @@ package body XAda.Dispatching.TTS is
             --  if we don't add it. We still have to debug this. Note that the
             --  delay only affects the first mode change, because Current_Plan
             --  is null.
-            Change_Plan (Now);
+            Change_Plan (Now + Overhead);
             
          elsif Current_Plan (Current_Slot_Index).all in Mode_Change_Slot'Class then
             

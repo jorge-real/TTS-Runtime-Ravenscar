@@ -53,14 +53,14 @@ package TT_Utilities is
 
    type Any_Initial_Mandatory_Final_Task_State is access all Initial_Mandatory_Final_Task_State'Class;
 
-   -- SyncedP_OptionalFinal Task State. Initialize + Synced_Code + [Condition] Final_Code
-   type SyncedP_OptionalFinal_Task_State is abstract tagged null record;
-   procedure Initialize (S : in out SyncedP_OptionalFinal_Task_State) is abstract;
-   procedure Synced_Code (S : in out SyncedP_OptionalFinal_Task_State) is abstract;
-   function Final_Condition (S : in out SyncedP_OptionalFinal_Task_State) return Boolean is abstract;
-   procedure Final_Code (S : in out SyncedP_OptionalFinal_Task_State) is abstract;
+   -- Initial_OptionalFinal Task State. Initialize + (S)Initial_Code + [Condition] Final_Code
+   type Initial_OptionalFinal_Task_State is abstract tagged null record;
+   procedure Initialize (S : in out Initial_OptionalFinal_Task_State) is abstract;
+   procedure Initial_Code (S : in out Initial_OptionalFinal_Task_State) is abstract;
+   function Final_Is_Required (S : in out Initial_OptionalFinal_Task_State) return Boolean is abstract;
+   procedure Final_Code (S : in out Initial_OptionalFinal_Task_State) is abstract;
 
-   type Any_SyncedP_OptionalFinal_Task_State is access all SyncedP_OptionalFinal_Task_State'Class;
+   type Any_Initial_OptionalFinal_Task_State is access all Initial_OptionalFinal_Task_State'Class;
 
    ---------------------------------------------
    --  Time_Slot kinds for building TT plans  --
@@ -134,16 +134,16 @@ package TT_Utilities is
      with Priority => System.Priority'Last - 1;
 
    ----------------------------------------------------
-   --  SYNC_P - [FINAL] ET TASK                      --
+   --  SYNC_INITIAL - [FINAL] ET TASK                --
    --                                                --
    --  Requires one sync slot for starting the       --
-   --    priority-based part, then ending with an    --
-   --    optional work slot for the final part       --
+   --    initial part (priority-based), then ending  --
+   --    with an optional slot for the final part    --
    ----------------------------------------------------
-   task type SyncedP_OptionalFinal_ET_Task
+   task type SyncedInitial_OptionalFinal_ET_Task
      (Sync_Id     : TT_Sync_Id;
       Work_Id     : TT_Work_Id;
-      Task_State  : Any_SyncedP_OptionalFinal_Task_State;
+      Task_State  : Any_Initial_OptionalFinal_Task_State;
       Synced_Init : Boolean);
 
 end TT_Utilities;

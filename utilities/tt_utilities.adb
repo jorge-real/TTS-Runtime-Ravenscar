@@ -262,11 +262,11 @@ package body TT_Utilities is
    end InitialMandatorySliced_Final_TT_Task;
 
 
-   -------------------------------------
-   -- SyncedP_OptionalFinal_ET_Task --
-   -------------------------------------
+   -----------------------------------------
+   -- SyncedInitial_OptionalFinal_ET_Task --
+   -----------------------------------------
 
-   task body SyncedP_OptionalFinal_ET_Task is
+   task body SyncedInitial_OptionalFinal_ET_Task is
       When_Was_Released : Time;
       Jitter            : Time_Span;
    begin
@@ -287,9 +287,9 @@ package body TT_Utilities is
                        " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
          --  Log --
 
-         Task_State.Synced_Code;
+         Task_State.Initial_Code;
 
-         if (Task_State.Final_Condition) then
+         if (Task_State.Final_Is_Required) then
             TTS.Wait_For_Activation (Work_Id, When_Was_Released);
 
             --  Log --
@@ -307,6 +307,6 @@ package body TT_Utilities is
       when E : others =>
          Put_Line ("TT worker W" & Character'Val (Character'Pos ('0') + Integer (Work_Id)) &
                      ": " & Exception_Message (E));
-   end SyncedP_OptionalFinal_ET_Task;
+   end SyncedInitial_OptionalFinal_ET_Task;
 
 end TT_Utilities;
