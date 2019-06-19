@@ -1,5 +1,6 @@
 with Ada.Real_Time; use Ada.Real_Time;
 with TT_Utilities;
+with TT_Patterns;
 with Logging_Support;
 with Ada.Text_IO; use Ada.Text_IO;
 with Epoch_Support; use Epoch_Support;
@@ -9,8 +10,11 @@ package body TTS_Example_A is
    Number_Of_Work_Ids : constant := 6;
    Number_Of_Sync_Ids : constant := 1;
 
-   package TT_Utils is new TT_Utilities (Number_Of_Work_Ids, Number_Of_Sync_Ids);
-   use TT_Utils;
+   package TT_Util is new TT_Utilities (Number_Of_Work_Ids, Number_Of_Sync_Ids);
+   use TT_Util;
+
+   package TT_Pat is new TT_Patterns (TT_Util.TTS);
+   use TT_Pat;
 
    --  Variables incremented by two TT sequences of IMs-F tasks
    Var_1, Var_2 : Natural := 0;
@@ -113,15 +117,14 @@ package body TTS_Example_A is
        A_TT_Slot (Terminal, 20, 2),       --  Seq. 1, terminal of Ms part
        A_TT_Slot (Empty, 180),
        A_TT_Slot (Regular, 50, 4),        --  Seq. 2, F part
-       A_TT_Slot (Sync, 150, 1),          --  Sync Point for ET Task 1
-       -- A_TT_Slot (Empty, 150),
+       A_TT_Slot (Sync, 150, 1),          --  Sync Point for ET Task 1 + Empty
        A_TT_Slot (Regular, 50, 2),        --  Seq. 1, F part
        A_TT_Slot (Empty, 150),
        A_TT_Slot (Regular, 20, 5),        --  I part of end of plan
        A_TT_Slot (Empty, 80),
        A_TT_Slot (Regular, 20, 5),        --  F part of end of plan
-       A_TT_Slot (Mode_Change, 40),
-       A_TT_Slot (Optional, 40, 6)         --  F part of synced ET Task 1
+       A_TT_Slot (Optional, 40, 6),       --  F part of synced ET Task 1
+       A_TT_Slot (Mode_Change, 40)
       );
 
 
