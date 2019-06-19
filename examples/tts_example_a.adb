@@ -1,19 +1,24 @@
 with Ada.Real_Time; use Ada.Real_Time;
-with TT_Utilities;
-with TT_Patterns;
 with Logging_Support;
 with Ada.Text_IO; use Ada.Text_IO;
 with Epoch_Support; use Epoch_Support;
+
+with XAda.Dispatching.TTS;
+with TT_Utilities;
+with TT_Patterns;
+
 
 package body TTS_Example_A is
 
    Number_Of_Work_Ids : constant := 6;
    Number_Of_Sync_Ids : constant := 1;
 
-   package TT_Util is new TT_Utilities (Number_Of_Work_Ids, Number_Of_Sync_Ids);
+   package TTS is new XAda.Dispatching.TTS (Number_Of_Work_Ids, Number_Of_Sync_Ids);
+
+   package TT_Util is new TT_Utilities (TTS);
    use TT_Util;
 
-   package TT_Pat is new TT_Patterns (TT_Util.TTS);
+   package TT_Pat is new TT_Patterns (TTS);
    use TT_Pat;
 
    --  Variables incremented by two TT sequences of IMs-F tasks
@@ -101,7 +106,7 @@ package body TTS_Example_A is
       Synced_Init => False);
 
    --  The TT plan
-   TT_Plan : aliased Time_Triggered_Plan :=
+   TT_Plan : aliased TTS.Time_Triggered_Plan :=
      ( A_TT_Slot (Regular, 50, 1),        --  Single slot for 1st seq. start
        A_TT_Slot (Empty, 150),
        A_TT_Slot (Regular, 50, 3),        --  Single slot for 2nd seq. start
@@ -134,27 +139,55 @@ package body TTS_Example_A is
 
    --  Actions of sequence initialisations
    procedure Main_Code (S : in out First_Init_Task) is  --  Simple_TT task with ID = 1
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       Var_1 := 0;
       Put_Line ("First_Init_Task.Main_Code ended at " & Now (Clock));
    end Main_Code;
 
    procedure Main_Code (S : in out Second_Init_Task) is  --  Simple_TT task with ID = 3
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       Var_2 := 0;
       Put_Line ("Second_Init_Task.Main_Code ended at " & Now (Clock));
    end Main_Code;
 
    --  Actions of first sequence: IMs-F task with ID = 2
    procedure Initial_Code (S : in out First_IMF_Task) is
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       S.Counter := Var_1;
       Put_Line ("First_IMF_Task.Initial_Code ended at " & Now (Clock));
    end Initial_Code;
 
    procedure Mandatory_Code (S : in out First_IMF_Task) is
+      Jitter : Time_Span;
    begin
-      Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
+Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
       while S.Counter < 200_000 loop
          S.Counter := S.Counter + 1;
          if S.Counter mod 20_000 = 0 then
@@ -165,20 +198,41 @@ package body TTS_Example_A is
    end Mandatory_Code;
 
    procedure Final_Code (S : in out First_IMF_Task) is
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       Var_1 := S.Counter;
       Put_Line ("First_IMF_Task.Final_Code Seq. 1 with Var_1 =" & Var_1'Image & " at" & Now (Clock));
    end Final_Code;
 
    --  Actions of Second sequence: IMs-F task with ID = 4
    procedure Initial_Code (S : in out Second_IMF_Task) is
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       S.Counter := Var_2;
       Put_Line ("Second_IMF_Task.Initial_Code ended at " & Now (Clock));
   end Initial_Code;
 
    procedure Mandatory_Code (S : in out Second_IMF_Task) is
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       Put_Line ("Second_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
       while S.Counter < 100_000 loop
          S.Counter := S.Counter + 1;
@@ -187,28 +241,55 @@ package body TTS_Example_A is
    end Mandatory_Code;
 
    procedure Final_Code (S : in out Second_IMF_Task) is
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       Var_2 := S.Counter;
       Put_Line ("Second_IMF_Task.Final_Code Seq. 2 with Var_2 =" & Var_2'Image  & " at" & Now (Clock));
    end Final_Code;
 
    --  End of plan actions: I-F task with ID = 4
    procedure Initial_Code (S : in out End_Of_Plan_IF_Task) is
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       Put_Line ("End_Of_Plan_IF_Task.Initial_Code at" & Now (Clock));
       Put_Line ("Value of Var_1 =" & Var_1'Image);
       Put_Line ("Value of Var_2 =" & Var_2'Image);
    end Initial_Code;
 
    procedure Final_Code (S : in out End_Of_Plan_IF_Task) is
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       Put_Line ("End_Of_Plan_IF_Task.Final_Code at" & Now (Clock));
       Put_Line ("Starting all over again!");
    end Final_Code;
 
-   --  End of plan actions: P-[F] task with ID = 1,6
    procedure Initial_Code (S : in out Synced_ET_Task) is
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Sync_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       S.Counter := S.Counter + 1;
       Put_Line ("Synced_ET_Task.Synced_Code with counter = " & S.Counter'Image  & " at" & Now (Clock));
    end Initial_Code;
@@ -222,7 +303,14 @@ package body TTS_Example_A is
    end Final_Is_Required;
 
    procedure Final_Code (S : in out Synced_ET_Task) is
+      Jitter : Time_Span;
    begin
+      --  Log --
+      Jitter := Clock - S.Release_Time;
+      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+
       Put_Line ("Synced_ET_Task.Final_Code with counter = " & S.Counter'Image  & " at" & Now (Clock));
    end Final_Code;
 
@@ -233,7 +321,7 @@ package body TTS_Example_A is
    procedure Main is
    begin
       delay until Epoch_Support.Epoch;
-      Set_Plan(TT_Plan'Access);
+      TTS.Set_Plan(TT_Plan'Access);
       delay until Ada.Real_Time.Time_Last;
    end Main;
 
