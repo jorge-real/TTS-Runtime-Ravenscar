@@ -39,7 +39,6 @@ package body TT_Patterns is
       Task_State.Initialize;
 
       loop
-
          TTS.Wait_For_Activation (Work_Id, Task_State.Release_Time);
 
          Task_State.Initial_Code;
@@ -112,6 +111,35 @@ package body TT_Patterns is
 
 
    -----------------------------------------
+   -- SyncedIniItial_OptionalFinal_ET_Task --
+   -----------------------------------------
+
+   task body Initial_OptionalFinal_TT_Task is
+   begin
+
+      if Synced_Init then
+         TTS.Wait_For_Activation (Initial_Work_Id, Task_State.Release_Time);
+         Task_State.Work_Id := Initial_Work_Id;      
+      end if;
+
+      Task_State.Initialize;
+
+      loop
+         TTS.Wait_For_Activation (Initial_Work_Id, Task_State.Release_Time);
+         Task_State.Work_Id := Initial_Work_Id;      
+
+         Task_State.Initial_Code;
+
+         if (Task_State.Final_Is_Required) then
+            TTS.Wait_For_Activation (Optional_Work_Id, Task_State.Release_Time);
+            Task_State.Work_Id := Optional_Work_Id;      
+
+            Task_State.Final_Code;
+         end if;
+      end loop;
+   end SyncedInitial_OptionalFinal_ET_Task;   
+
+   -----------------------------------------
    -- SyncedInitial_OptionalFinal_ET_Task --
    -----------------------------------------
 
@@ -128,7 +156,6 @@ package body TT_Patterns is
       Task_State.Initialize;
 
       loop
-
          TTS.Wait_For_Sync (Sync_Id, Task_State.Release_Time);
 
          Task_State.Initial_Code;
@@ -138,7 +165,6 @@ package body TT_Patterns is
 
             Task_State.Final_Code;
          end if;
-
       end loop;
    end SyncedInitial_OptionalFinal_ET_Task;   
 

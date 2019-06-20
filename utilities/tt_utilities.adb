@@ -7,10 +7,10 @@ package body TT_Utilities is
    ---------------------------------
 
    --  Auxiliary function for constructing slots --
-   function A_TT_Slot (Kind : Slot_Type ;
-                       Slot_Duration_MS : Natural;
-                       Slot_Id : Positive := Positive'Last;
-                       Padding : Time_Span := Time_Span_Zero) return TTS.Time_Slot_Access
+   function New_TT_Slot (Kind : Slot_Type ;
+                         Slot_Duration_MS : Natural;
+                         Slot_Id : Positive := Positive'Last;
+                         Padding : Time_Span := Time_Span_Zero) return TTS.Time_Slot_Access
    is
       New_Slot : TTS.Time_Slot_Access;
       Slot_Duration : Time_Span := Ada.Real_Time.Milliseconds (Slot_Duration_MS);
@@ -46,6 +46,6 @@ package body TT_Utilities is
       end case;
 
       return New_Slot;
-   end A_TT_Slot;
+   end New_TT_Slot;
 
 end TT_Utilities;

@@ -7,7 +7,6 @@ with XAda.Dispatching.TTS;
 with TT_Utilities;
 with TT_Patterns;
 
-
 package body TTS_Example_A is
 
    Number_Of_Work_Ids : constant := 6;
@@ -107,29 +106,29 @@ package body TTS_Example_A is
 
    --  The TT plan
    TT_Plan : aliased TTS.Time_Triggered_Plan :=
-     ( A_TT_Slot (Regular, 50, 1),        --  Single slot for 1st seq. start
-       A_TT_Slot (Empty, 150),
-       A_TT_Slot (Regular, 50, 3),        --  Single slot for 2nd seq. start
-       A_TT_Slot (Empty, 150),
-       A_TT_Slot (Regular, 20, 2),        --  Seq. 1, IMs part
-       A_TT_Slot (Empty, 180),
-       A_TT_Slot (Regular, 50, 4),        --  Seq. 2, IMs part
-       A_TT_Slot (Empty, 150),
-       A_TT_Slot (Continuation, 20, 2),   --  Seq. 1, continuation of Ms part
-       A_TT_Slot (Empty, 180),
-       A_TT_Slot (Terminal, 100, 4),      --  Seq. 2, terminal of Ms part
-       A_TT_Slot (Empty, 100),
-       A_TT_Slot (Terminal, 20, 2),       --  Seq. 1, terminal of Ms part
-       A_TT_Slot (Empty, 180),
-       A_TT_Slot (Regular, 50, 4),        --  Seq. 2, F part
-       A_TT_Slot (Sync, 150, 1),          --  Sync Point for ET Task 1 + Empty
-       A_TT_Slot (Regular, 50, 2),        --  Seq. 1, F part
-       A_TT_Slot (Empty, 150),
-       A_TT_Slot (Regular, 20, 5),        --  I part of end of plan
-       A_TT_Slot (Empty, 80),
-       A_TT_Slot (Regular, 20, 5),        --  F part of end of plan
-       A_TT_Slot (Optional, 40, 6),       --  F part of synced ET Task 1
-       A_TT_Slot (Mode_Change, 40)
+     ( New_TT_Slot (Regular, 50, 1),        --  Single slot for 1st seq. start
+       New_TT_Slot (Empty, 150),
+       New_TT_Slot (Regular, 50, 3),        --  Single slot for 2nd seq. start
+       New_TT_Slot (Empty, 150),
+       New_TT_Slot (Regular, 20, 2),        --  Seq. 1, IMs part
+       New_TT_Slot (Empty, 180),
+       New_TT_Slot (Regular, 50, 4),        --  Seq. 2, IMs part
+       New_TT_Slot (Empty, 150),
+       New_TT_Slot (Continuation, 20, 2),   --  Seq. 1, continuation of Ms part
+       New_TT_Slot (Empty, 180),
+       New_TT_Slot (Terminal, 100, 4),      --  Seq. 2, terminal of Ms part
+       New_TT_Slot (Empty, 100),
+       New_TT_Slot (Terminal, 20, 2),       --  Seq. 1, terminal of Ms part
+       New_TT_Slot (Empty, 180),
+       New_TT_Slot (Regular, 50, 4),        --  Seq. 2, F part
+       New_TT_Slot (Sync, 150, 1),          --  Sync Point for ET Task 1 + Empty
+       New_TT_Slot (Regular, 50, 2),        --  Seq. 1, F part
+       New_TT_Slot (Empty, 150),
+       New_TT_Slot (Regular, 20, 5),        --  I part of end of plan
+       New_TT_Slot (Empty, 80),
+       New_TT_Slot (Regular, 20, 5),        --  F part of end of plan
+       New_TT_Slot (Optional, 40, 6),       --  F part of synced ET Task 1
+       New_TT_Slot (Mode_Change, 40)
       );
 
 
@@ -143,7 +142,7 @@ package body TTS_Example_A is
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
@@ -156,7 +155,7 @@ package body TTS_Example_A is
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
@@ -170,7 +169,7 @@ package body TTS_Example_A is
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
@@ -183,17 +182,19 @@ package body TTS_Example_A is
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
-Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
+      Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
+
       while S.Counter < 200_000 loop
          S.Counter := S.Counter + 1;
          if S.Counter mod 20_000 = 0 then
             Put_Line ("First_IMF_Task.Mandatory_Code sliced step " & Now (Clock));
          end if;
       end loop;
+
       Put_Line ("First_IMF_Task.Mandatory_Code sliced ended at " & Now (Clock));
    end Mandatory_Code;
 
@@ -202,7 +203,7 @@ Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
@@ -216,7 +217,7 @@ Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
@@ -229,7 +230,7 @@ Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
@@ -245,7 +246,7 @@ Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
@@ -259,7 +260,7 @@ Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
@@ -273,7 +274,7 @@ Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
@@ -286,7 +287,7 @@ Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Sync_Id)'Image &
+      Put_line( "Synced" & Integer (S.Sync_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
@@ -307,7 +308,7 @@ Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
    begin
       --  Log --
       Jitter := Clock - S.Release_Time;
-      Put_line( "|---> Jitter of Worker" & Integer (S.Work_Id)'Image &
+      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
              " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 

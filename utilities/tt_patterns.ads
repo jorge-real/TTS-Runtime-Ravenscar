@@ -11,9 +11,8 @@ package TT_Patterns is
       Sync_Id : TTS.TT_Sync_Id;
    end record;
 
-   -- Simple Task State. Initialize + Code
+   -- Simple Task State. Initialize + Main_Code
    type Simple_Task_State is abstract new Task_State with null record;
-
    procedure Initialize (S : in out Simple_Task_State) is abstract;
    procedure Main_Code (S : in out Simple_Task_State) is abstract;
 
@@ -89,6 +88,19 @@ package TT_Patterns is
      (Work_Id     : TTS.TT_Work_Id;
       Task_State  : Any_Initial_Mandatory_Final_Task_State;
       Synced_Init : Boolean);
+
+   ----------------------------------------------------
+   --  INITIAL - [FINAL] TT TASK                     --
+   --                                                --
+   --  Requires one slot for I, starting the         --
+   --    initial part, then ending with an optional  --
+   --    slot for the final part                     --
+   ----------------------------------------------------
+   task type Initial_OptionalFinal_TT_Task
+     (Initial_Work_Id  : TTS.TT_Work_Id;
+      Optional_Work_Id : TTS.TT_Work_Id;
+      Task_State       : Any_Initial_OptionalFinal_Task_State;
+      Synced_Init      : Boolean);
 
    ----------------------------------------------------
    --  SYNC_INITIAL - [FINAL] ET TASK                --
