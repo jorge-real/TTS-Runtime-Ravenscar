@@ -143,7 +143,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       Var_1 := 0;
@@ -156,7 +156,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       Var_2 := 0;
@@ -170,7 +170,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       S.Counter := Var_1;
@@ -183,7 +183,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
@@ -204,7 +204,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       Var_1 := S.Counter;
@@ -218,7 +218,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       S.Counter := Var_2;
@@ -231,7 +231,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       Put_Line ("Second_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
@@ -247,7 +247,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       Var_2 := S.Counter;
@@ -261,7 +261,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       Put_Line ("End_Of_Plan_IF_Task.Initial_Code at" & Now (Clock));
@@ -275,7 +275,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       Put_Line ("End_Of_Plan_IF_Task.Final_Code at" & Now (Clock));
@@ -288,7 +288,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Synced" & Integer (S.Sync_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       S.Counter := S.Counter + 1;
@@ -309,7 +309,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-             " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       Put_Line ("Synced_ET_Task.Final_Code with counter = " & S.Counter'Image  & " at" & Now (Clock));
