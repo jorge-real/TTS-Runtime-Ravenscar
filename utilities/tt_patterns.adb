@@ -137,7 +137,7 @@ package body TT_Patterns is
             Task_State.Final_Code;
          end if;
       end loop;
-   end SyncedInitial_OptionalFinal_ET_Task;   
+   end Initial_OptionalFinal_TT_Task;   
 
    -----------------------------------------
    -- SyncedInitial_OptionalFinal_ET_Task --
