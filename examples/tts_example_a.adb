@@ -309,7 +309,7 @@ package body TTS_Example_A is
       --  Log --
       Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-                & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
 
       Put_Line ("Synced_ET_Task.Final_Code with counter = " & S.Counter'Image  & " at" & Now (Clock));
