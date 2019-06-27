@@ -52,7 +52,7 @@ function Get_Last_Plan_Release return Ada.Real_Time.Time;
 
 Priority-based tasks use this procedure to wait for their next assigned sync slot.
 The invoking task gets blocked until the next sync slot with the proper `Sync_Id` is reached. 
-If the sync slot is reached before the procedure is invoked, the caller tasks is not blocked and continues its execution. This behaviour is similar to use `delay until` with a absolute time in the past. 
+If the sync slot is reached before the procedure is invoked, the caller tasks is not blocked and continues its execution. This behaviour is similar to use `delay until` with an absolute time in the past. 
 
 When task is released, the `When_Was_Released` result informs the caller task of the slot starting time. 
 
