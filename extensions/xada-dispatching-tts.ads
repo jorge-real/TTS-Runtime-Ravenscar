@@ -91,6 +91,13 @@ package XAda.Dispatching.TTS is
    --   there is no more work to do at TT priority level
    procedure Leave_TT_Level;
 
+   --  Returns the first time the first slot of the current plan was released.
+   --   It is equivalent to an Epoch for the current plan.
+   --   During a mode change slot of the current plan, if a Set_Plan
+   --   has been invoked, this time can be pointing to the next plan starting
+   --   time, that correponds to the end of the current mode change slot.
+   function Get_First_Plan_Release return Ada.Real_Time.Time;
+
    --  Returns the last time the first slot of the plan was released
    function Get_Last_Plan_Release return Ada.Real_Time.Time;
 
@@ -117,6 +124,9 @@ private
 
       --  Inform the scheduler that you have no more work as a TT task
       procedure Leave_TT_Level;
+
+      --  Returns the first time the first slot of the plan was released
+      function Get_First_Plan_Release return Ada.Real_Time.Time;
 
       --  Returns the last time the first slot of the plan was released
       function Get_Last_Plan_Release return Ada.Real_Time.Time;
@@ -166,6 +176,9 @@ private
 
       --  Start time of next slot
       Next_Slot_Release  : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
+
+      --  Start time of the current plan
+      First_Plan_Release : Ada.Real_Time.Time := Ada.Real_Time.Time_First;
 
       --  Start time of the first slot
       First_Slot_Release : Ada.Real_Time.Time := Ada.Real_Time.Time_First;

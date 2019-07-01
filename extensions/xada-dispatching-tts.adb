@@ -109,6 +109,15 @@ package body XAda.Dispatching.TTS is
       Time_Triggered_Scheduler.Leave_TT_Level;
    end Leave_TT_Level;
 
+   ----------------------------
+   -- Get_First_Plan_Release --
+   ----------------------------
+   
+   function Get_First_Plan_Release return Ada.Real_Time.Time is
+   begin
+      return Time_Triggered_Scheduler.Get_First_Plan_Release;
+   end Get_First_Plan_Release;
+   
    ---------------------------
    -- Get_Last_Plan_Release --
    ---------------------------
@@ -293,9 +302,19 @@ package body XAda.Dispatching.TTS is
          Current_Slot_Index := Current_Plan.all'First;
          Next_Slot_Index := Current_Plan.all'First;
          Next_Slot_Release := At_Time;
+         First_Plan_Release := At_Time;
          NS_Event.Set_Handler (At_Time - Overhead, NS_Handler_Access);
       end Change_Plan;
 
+      ----------------------------
+      -- Get_Last_First_Release --
+      ----------------------------
+   
+      function Get_First_Plan_Release return Ada.Real_Time.Time is
+      begin
+         return First_Plan_Release;
+      end Get_First_Plan_Release;
+      
       ---------------------------
       -- Get_Last_Plan_Release --
       ---------------------------
