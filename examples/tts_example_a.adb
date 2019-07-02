@@ -1,6 +1,8 @@
 with Ada.Real_Time; use Ada.Real_Time;
 with Logging_Support;
 with Ada.Text_IO; use Ada.Text_IO;
+with System; use System;
+
 with Epoch_Support; use Epoch_Support;
 
 with XAda.Dispatching.TTS;
@@ -10,9 +12,9 @@ with TT_Patterns;
 package body TTS_Example_A is
 
    Number_Of_Work_Ids : constant := 6;
-   Number_Of_Sync_Ids : constant := 1;
+   Number_Of_Sync_Ids : constant := 2;
 
-   package TTS is new XAda.Dispatching.TTS (Number_Of_Work_Ids, Number_Of_Sync_Ids);
+   package TTS is new XAda.Dispatching.TTS (Number_Of_Work_Ids, Number_Of_Sync_Ids, Priority'Last - 1);
 
    package TT_Util is new TT_Utilities (TTS);
    use TT_Util;
@@ -24,6 +26,11 @@ package body TTS_Example_A is
    Var_1, Var_2 : Natural := 0;
    pragma Volatile (Var_1);
    pragma Volatile (Var_2);
+
+   --  Auxiliary for printing times --
+   function Now (Current : Time) return String is
+     (Duration'Image ( To_Duration (Current - TTS.Get_First_Plan_Release) * 1000) & " ms " &
+      "|" & Duration'Image ( To_Duration (Current - TTS.Get_Last_Plan_Release) * 1000) & " ms ");
 
    -- TT tasks --
 
@@ -104,12 +111,32 @@ package body TTS_Example_A is
       Task_State => Wk6_Code'Access,
       Synced_Init => False);
 
+   task type SyncedSporadic_ET_Task
+     (Sync_Id : TTS.TT_Sync_Id;
+      Offset  : Natural)
+     with Priority => Priority'Last;
+
+   task body SyncedSporadic_ET_Task is
+      Release_Time : Time;
+   begin
+      loop
+         TTS.Wait_For_Sync (Sync_Id, Release_Time);
+
+         delay To_Duration(Milliseconds(Offset));
+
+         Put_Line ("Sporadic task interrupting at " & Now (Clock));
+      end loop;
+   end SyncedSporadic_ET_Task;
+
+   Sp1 : SyncedSporadic_ET_Task
+     (Sync_Id => 2, Offset => 158);
+
    --  The TT plan
    TT_Plan : aliased TTS.Time_Triggered_Plan :=
      ( New_TT_Slot (Regular, 50, 1),        --  Single slot for 1st seq. start
        New_TT_Slot (Empty, 150),
        New_TT_Slot (Regular, 50, 3),        --  Single slot for 2nd seq. start
-       New_TT_Slot (Empty, 150),
+       New_TT_Slot (Sync, 150, 2),          --  Sync point for sporadic task SP1
        New_TT_Slot (Regular, 20, 2),        --  Seq. 1, IMs part
        New_TT_Slot (Empty, 180),
        New_TT_Slot (Regular, 50, 4),        --  Seq. 2, IMs part
@@ -130,11 +157,6 @@ package body TTS_Example_A is
        New_TT_Slot (Optional, 40, 6),       --  F part of synced ET Task 1
        New_TT_Slot (Mode_Change, 40)
       );
-
-
-   --  Auxiliary for printing times --
-   function Now (Current : Time) return String is
-     (Duration'Image ( To_Duration (Current - TTS.Get_Last_Plan_Release) * 1000) & " ms.");
 
    --  Actions of sequence initialisations
    procedure Main_Code (S : in out First_Init_Task) is  --  Simple_TT task with ID = 1
@@ -178,14 +200,7 @@ package body TTS_Example_A is
    end Initial_Code;
 
    procedure Mandatory_Code (S : in out First_IMF_Task) is
-      Jitter : Time_Span;
    begin
-      --  Log --
-      Jitter := Clock - S.Release_Time;
-      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
-      --  Log --
-
       Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
 
       while S.Counter < 200_000 loop
@@ -226,17 +241,13 @@ package body TTS_Example_A is
   end Initial_Code;
 
    procedure Mandatory_Code (S : in out Second_IMF_Task) is
-      Jitter : Time_Span;
    begin
-      --  Log --
-      Jitter := Clock - S.Release_Time;
-      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
-      --  Log --
-
       Put_Line ("Second_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
       while S.Counter < 100_000 loop
          S.Counter := S.Counter + 1;
+         if S.Counter mod 20_000 = 0 then
+            Put_Line ("Second_IMF_Task.Mandatory_Code sliced step " & Now (Clock));
+         end if;
       end loop;
       Put_Line ("Second_IMF_Task.Mandatory_Code sliced ended at " & Now (Clock));
    end Mandatory_Code;

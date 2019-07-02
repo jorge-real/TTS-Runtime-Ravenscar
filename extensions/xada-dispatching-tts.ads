@@ -13,13 +13,14 @@
 --
 ------------------------------------------------------------
 
-with Ada.Real_Time;
-private with Ada.Real_Time.Timing_Events, System;
+with Ada.Real_Time, System;
+private with Ada.Real_Time.Timing_Events;
 
 generic
 
    Number_Of_Work_IDs : Positive;
    Number_Of_Sync_IDs : Positive := 1;
+   TT_Priority : System.Priority := System.Priority'Last;
 
 package XAda.Dispatching.TTS is
 
@@ -93,9 +94,6 @@ package XAda.Dispatching.TTS is
 
    --  Returns the first time the first slot of the current plan was released.
    --   It is equivalent to an Epoch for the current plan.
-   --   During a mode change slot of the current plan, if a Set_Plan
-   --   has been invoked, this time can be pointing to the next plan starting
-   --   time, that correponds to the end of the current mode change slot.
    function Get_First_Plan_Release return Ada.Real_Time.Time;
 
    --  Returns the last time the first slot of the plan was released
@@ -178,6 +176,7 @@ private
       Next_Slot_Release  : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
       --  Start time of the current plan
+      Plan_Start_Pending : Boolean := True;
       First_Plan_Release : Ada.Real_Time.Time := Ada.Real_Time.Time_First;
 
       --  Start time of the first slot

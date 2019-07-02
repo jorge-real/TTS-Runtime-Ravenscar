@@ -78,7 +78,7 @@ package body XAda.Dispatching.TTS is
 
       --  Raise own priority, before getting blocked. This is to recover the TT
       --  priority when the calling task has previuosly called Leave_TT_Level
-      Set_Priority (System.Priority'Last);
+      Set_Priority (TT_Priority);
 
       --  Inform the TT scheduler the task is going to wait for activation
       Time_Triggered_Scheduler.Prepare_For_Activation (Work_Id);
@@ -169,7 +169,7 @@ package body XAda.Dispatching.TTS is
          --  change to the Next_Plan at the end of the next mode change slot
          if Current_Plan = null then
             
-            --  The extra millisecond delay is to bypass the exception we get
+            --  The extra 'overhead' delay is to bypass the exception we get
             --  if we don't add it. We still have to debug this. Note that the
             --  delay only affects the first mode change, because Current_Plan
             --  is null.
@@ -302,7 +302,7 @@ package body XAda.Dispatching.TTS is
          Current_Slot_Index := Current_Plan.all'First;
          Next_Slot_Index := Current_Plan.all'First;
          Next_Slot_Release := At_Time;
-         First_Plan_Release := At_Time;
+         Plan_Start_Pending := True;
          NS_Event.Set_Handler (At_Time - Overhead, NS_Handler_Access);
       end Change_Plan;
 
@@ -463,6 +463,10 @@ package body XAda.Dispatching.TTS is
          Current_Slot_Index := Next_Slot_Index;
          if Current_Slot_Index = Current_Plan.all'First then
             First_Slot_Release := Now;
+            if Plan_Start_Pending then
+               First_Plan_Release := Now;
+               Plan_Start_Pending := False;
+            end if;
          end if;
 
          --  Obtain next slot index. The plan is repeated circularly
