@@ -36,7 +36,6 @@ package XAda.Dispatching.TTS is
    type Time_Slot is abstract tagged record
       Slot_Duration : Ada.Real_Time.Time_Span;
    end record;
-
    type Time_Slot_Access is access all Time_Slot'Class;
 
    -- An empty time slot
@@ -52,7 +51,6 @@ package XAda.Dispatching.TTS is
       record
          Sync_Id         : TT_Sync_Id;
       end record;
-
    type Sync_Slot_Access is access all Sync_Slot'Class;
 
    -- A work slot
@@ -62,7 +60,6 @@ package XAda.Dispatching.TTS is
          Is_Continuation : Boolean := False;
          Padding         : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
       end record;
-
    type Work_Slot_Access is access all Work_Slot'Class;
 
    -- An optional work slot

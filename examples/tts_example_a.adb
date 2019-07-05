@@ -19,8 +19,8 @@ package body TTS_Example_A is
    package TT_Util is new TT_Utilities (TTS);
    use TT_Util;
 
-   package TT_Pat is new TT_Patterns (TTS);
-   use TT_Pat;
+   package TT_Patt is new TT_Patterns (TTS);
+   use TT_Patt;
 
    --  Variables incremented by two TT sequences of IMs-F tasks
    Var_1, Var_2 : Natural := 0;
@@ -146,9 +146,10 @@ package body TTS_Example_A is
        New_TT_Slot (Terminal, 100, 4),      --  Seq. 2, terminal of Ms part
        New_TT_Slot (Empty, 100),
        New_TT_Slot (Terminal, 20, 2),       --  Seq. 1, terminal of Ms part
-       New_TT_Slot (Empty, 180),
+       New_TT_Slot (Sync, 80, 1),
+       New_TT_Slot (Empty, 100),
        New_TT_Slot (Regular, 50, 4),        --  Seq. 2, F part
-       New_TT_Slot (Sync, 150, 1),          --  Sync Point for ET Task 1 + Empty
+       New_TT_Slot (Empty, 150),          --  Sync Point for ET Task 1 + Empty
        New_TT_Slot (Regular, 50, 2),        --  Seq. 1, F part
        New_TT_Slot (Empty, 150),
        New_TT_Slot (Regular, 20, 5),        --  I part of end of plan

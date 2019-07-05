@@ -48,4 +48,15 @@ package body TT_Utilities is
       return New_Slot;
    end New_TT_Slot;
 
+   procedure Set_TT_Slot (Slot             : TTS.Time_Slot_Access;
+                          Kind             : Slot_Type;
+                          Slot_Duration_MS : Natural;
+                          Slot_Id          : Positive := Positive'Last;
+                          Padding          : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero)
+   is
+      Slot_Duration : Time_Span := Ada.Real_Time.Milliseconds (Slot_Duration_MS);
+   begin
+      null;
+   end Set_TT_Slot;
+
 end TT_Utilities;

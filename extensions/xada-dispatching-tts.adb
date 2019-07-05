@@ -173,7 +173,7 @@ package body XAda.Dispatching.TTS is
             --  if we don't add it. We still have to debug this. Note that the
             --  delay only affects the first mode change, because Current_Plan
             --  is null.
-            Change_Plan (Now + Overhead);
+            Change_Plan (Now + Milliseconds(1));
             
          elsif Current_Plan (Current_Slot_Index).all in Mode_Change_Slot'Class then
             
@@ -508,7 +508,7 @@ package body XAda.Dispatching.TTS is
 
          elsif Current_Slot.all in Sync_Slot'Class then
             ----------------------------
-            --  Process an Sync_Slot  --
+            --  Process a Sync_Slot   --
             ----------------------------
 
             Current_Sync_Slot := Sync_Slot_Access(Current_Slot);
@@ -599,7 +599,6 @@ package body XAda.Dispatching.TTS is
             --  Set timing event for the next scheduling point
             NS_Event.Set_Handler (Next_Slot_Release - Overhead,
                                   NS_Handler_Access);
-
          end if;
       end NS_Handler;
 
