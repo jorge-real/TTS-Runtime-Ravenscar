@@ -110,9 +110,9 @@ package body TT_Patterns is
    end InitialMandatorySliced_Final_TT_Task;
 
 
-   -----------------------------------------
-   -- SyncedIniItial_OptionalFinal_ET_Task --
-   -----------------------------------------
+   ------------------------------------
+   -- Iniitial_OptionalFinal_TT_Task --
+   ------------------------------------
 
    task body Initial_OptionalFinal_TT_Task is
    begin
