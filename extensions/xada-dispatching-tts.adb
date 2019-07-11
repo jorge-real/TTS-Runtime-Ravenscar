@@ -30,7 +30,7 @@ package body XAda.Dispatching.TTS is
    --  23 and 24 us) we charge that overhead at the end of the slot, by
    --  effectively advancing the slot start time by the Overhead time.
    --  This reduces the release jitter even further for TT tasks, to about 3 us
-   Overhead : constant Time_Span := Microseconds (20);
+   Overhead : constant Time_Span := Microseconds (0);
 
    --  Run time TT work info
    type Work_Control_Block is record
@@ -410,7 +410,7 @@ package body XAda.Dispatching.TTS is
          --  Check for overrun in the ending slot, if it is a TT_Work_Slot.
          --  If this happens to be the first slot after a plan change, then
          --  we come from a mode-change slot, so there is no overrun to check,
-         --  because it was checked at the start of that mode-change slot
+         --  because it was checked before that mode-change slot
 
          Current_Slot := Current_Plan (Current_Slot_Index);
 
@@ -556,7 +556,7 @@ package body XAda.Dispatching.TTS is
                                              Hold_Handler_Access);
                   end if;                        
 
-               elsif Current_Work_Slot.all in Optional_Work_Slot'Class then
+               elsif Current_Work_Slot.all in Optional_Slot'Class then
                   --  If the slot is optional, it is not an error if the TT
                   --    task has not invoked Wait_For_Activation
                   null;

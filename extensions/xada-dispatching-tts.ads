@@ -12,6 +12,7 @@
 --  @author Sergio Saez <ssaez@disca.upv.es>
 --
 ------------------------------------------------------------
+pragma Profile (Ravenscar);
 
 with Ada.Real_Time, System;
 private with Ada.Real_Time.Timing_Events;
@@ -54,7 +55,7 @@ package XAda.Dispatching.TTS is
    type Sync_Slot_Access is access all Sync_Slot'Class;
 
    -- A work slot
-   type Work_Slot is new Time_Slot with
+   type Work_Slot is abstract new Time_Slot with
       record
          Work_Id         : TT_Work_Id;
          Is_Continuation : Boolean := False;
@@ -62,9 +63,13 @@ package XAda.Dispatching.TTS is
       end record;
    type Work_Slot_Access is access all Work_Slot'Class;
 
+   -- A regular slot
+   type Regular_Slot is new Work_Slot with null record;
+   type Regular_Slot_Access is access all Regular_Slot'Class;
+
    -- An optional work slot
-   type Optional_Work_Slot is new Work_Slot with null record;
-   type Optional_Work_Slot_Access is access all Work_Slot'Class;
+   type Optional_Slot is new Work_Slot with null record;
+   type Optional_Slot_Access is access all Work_Slot'Class;
 
    --  Types representing/accessing TT plans
    type Time_Triggered_Plan        is array (Natural range <>) of Time_Slot_Access;

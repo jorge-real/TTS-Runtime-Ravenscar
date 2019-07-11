@@ -14,7 +14,8 @@ package body TTS_Example_A is
    Number_Of_Work_Ids : constant := 6;
    Number_Of_Sync_Ids : constant := 2;
 
-   package TTS is new XAda.Dispatching.TTS (Number_Of_Work_Ids, Number_Of_Sync_Ids, Priority'Last - 1);
+   package TTS is new XAda.Dispatching.TTS
+     (Number_Of_Work_Ids, Number_Of_Sync_Ids, Priority'Last - 1);
 
    package TT_Util is new TT_Utilities (TTS);
    use TT_Util;
@@ -44,7 +45,8 @@ package body TTS_Example_A is
       Task_State => Wk1_Code'Access,
       Synced_Init => False);
 
-   type First_IMF_Task is new Initial_Mandatory_Final_Task_State with
+   type First_IMF_Task is new Initial_Mandatory_Final_Task_State
+     with
       record
          Counter : Natural := 0;
       end record;
@@ -53,10 +55,10 @@ package body TTS_Example_A is
    procedure Mandatory_Code (S : in out First_IMF_Task);
    procedure Final_Code (S : in out First_IMF_Task);
 
-   Wk2_Code : aliased First_IMF_Task;
+   Wk2_State : aliased First_IMF_Task;
    Wk2 : InitialMandatorySliced_Final_TT_Task
      (Work_Id => 2,
-      Task_State => Wk2_Code'Access,
+      Task_State => Wk2_State'Access,
       Synced_Init => False);
 
    type Second_Init_Task is new Simple_Task_State with null record;
@@ -122,7 +124,7 @@ package body TTS_Example_A is
       loop
          TTS.Wait_For_Sync (Sync_Id, Release_Time);
 
-         delay To_Duration(Milliseconds(Offset));
+         delay until Release_Time + Milliseconds (Offset);
 
          Put_Line ("Sporadic task interrupting at " & Now (Clock));
       end loop;
@@ -131,33 +133,39 @@ package body TTS_Example_A is
    Sp1 : SyncedSporadic_ET_Task
      (Sync_Id => 2, Offset => 158);
 
+   ms : constant Time_Span := Milliseconds (1);
+
    --  The TT plan
    TT_Plan : aliased TTS.Time_Triggered_Plan :=
-     ( New_TT_Slot (Regular, 50, 1),        --  Single slot for 1st seq. start
-       New_TT_Slot (Empty, 150),
-       New_TT_Slot (Regular, 50, 3),        --  Single slot for 2nd seq. start
-       New_TT_Slot (Sync, 150, 2),          --  Sync point for sporadic task SP1
-       New_TT_Slot (Regular, 20, 2),        --  Seq. 1, IMs part
-       New_TT_Slot (Empty, 180),
-       New_TT_Slot (Regular, 50, 4),        --  Seq. 2, IMs part
-       New_TT_Slot (Empty, 150),
-       New_TT_Slot (Continuation, 20, 2),   --  Seq. 1, continuation of Ms part
-       New_TT_Slot (Empty, 180),
-       New_TT_Slot (Terminal, 100, 4),      --  Seq. 2, terminal of Ms part
-       New_TT_Slot (Empty, 100),
-       New_TT_Slot (Terminal, 20, 2),       --  Seq. 1, terminal of Ms part
-       New_TT_Slot (Sync, 80, 1),
-       New_TT_Slot (Empty, 100),
-       New_TT_Slot (Regular, 50, 4),        --  Seq. 2, F part
-       New_TT_Slot (Empty, 150),          --  Sync Point for ET Task 1 + Empty
-       New_TT_Slot (Regular, 50, 2),        --  Seq. 1, F part
-       New_TT_Slot (Empty, 150),
-       New_TT_Slot (Regular, 20, 5),        --  I part of end of plan
-       New_TT_Slot (Empty, 80),
-       New_TT_Slot (Regular, 20, 5),        --  F part of end of plan
-       New_TT_Slot (Optional, 40, 6),       --  F part of synced ET Task 1
-       New_TT_Slot (Mode_Change, 40)
-      );
+     ( TT_Slot (Regular,       50*ms, 1),  --  #00 Single slot for 1st seq. start
+       TT_Slot (Empty,        150*ms   ),  --  #01
+       TT_Slot (Regular,       50*ms, 3),  --  #02 Single slot for 2nd seq. start
+       TT_Slot (Sync,         150*ms, 2),  --  #03 Sync point for sporadic task SP1
+
+--         TT_Slot (Empty,         10*ms   ),
+
+       TT_Slot (Regular,       50*ms, 2),  --  #04 Seq. 1, IMs part
+       TT_Slot (Regular,       50*ms, 4),  --  #06 Seq. 2, IMs part
+       TT_Slot (Empty,        150*ms   ),  --  #05
+       TT_Slot (Empty,        150*ms   ),  --  #07
+       TT_Slot (Continuation,  50*ms, 2),  --  #08 Seq. 1, continuation of Ms part
+       TT_Slot (Empty,        150*ms   ),  --  #09
+       TT_Slot (Terminal,     100*ms, 4),  --  #10 Seq. 2, terminal of Ms part
+       TT_Slot (Empty,        100*ms   ),  --  #11
+       TT_Slot (Terminal,      50*ms, 2),  --  #12 Seq. 1, terminal of Ms part
+       TT_Slot (Sync,           0*ms, 1),  --  #13 Sync Point for ET Task 1 + Empty
+
+       TT_Slot (Empty,        150*ms   ),
+
+       TT_Slot (Regular,       50*ms, 4),  --  #14 Seq. 2, F part
+       TT_Slot (Empty,        100*ms   ),  --  #15
+       TT_Slot (Regular,       50*ms, 2),  --  #16 Seq. 1, F part
+       TT_Slot (Empty,         80*ms   ),  --  #17
+       TT_Slot (Regular,       50*ms, 5),  --  #18 I part of end of plan
+       TT_Slot (Empty,         70*ms   ),  --  #19
+       TT_Slot (Regular,       50*ms, 5),  --  #20 F part of end of plan
+       TT_Slot (Optional,      70*ms, 6),  --  #21 F part of synced ET Task 1
+       TT_Slot (Mode_Change,   80*ms)  );  --  #22
 
    --  Actions of sequence initialisations
    procedure Main_Code (S : in out First_Init_Task) is  --  Simple_TT task with ID = 1
@@ -204,7 +212,7 @@ package body TTS_Example_A is
    begin
       Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
 
-      while S.Counter < 200_000 loop
+      while S.Counter < 250_000 loop
          S.Counter := S.Counter + 1;
          if S.Counter mod 20_000 = 0 then
             Put_Line ("First_IMF_Task.Mandatory_Code sliced step " & Now (Clock));
@@ -291,7 +299,11 @@ package body TTS_Example_A is
       --  Log --
 
       Put_Line ("End_Of_Plan_IF_Task.Final_Code at" & Now (Clock));
+      New_Line;
+      Put_Line ("------------------------");
       Put_Line ("Starting all over again!");
+      Put_Line ("------------------------");
+      New_Line;
    end Final_Code;
 
    procedure Initial_Code (S : in out Synced_ET_Task) is
