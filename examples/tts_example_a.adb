@@ -141,38 +141,36 @@ package body TTS_Example_A is
        TT_Slot (Empty,        150*ms   ),  --  #01
        TT_Slot (Regular,       50*ms, 3),  --  #02 Single slot for 2nd seq. start
        TT_Slot (Sync,         150*ms, 2),  --  #03 Sync point for sporadic task SP1
-
---         TT_Slot (Empty,         10*ms   ),
-
        TT_Slot (Regular,       50*ms, 2),  --  #04 Seq. 1, IMs part
-       TT_Slot (Regular,       50*ms, 4),  --  #06 Seq. 2, IMs part
-       TT_Slot (Empty,        150*ms   ),  --  #05
-       TT_Slot (Empty,        150*ms   ),  --  #07
-       TT_Slot (Continuation,  50*ms, 2),  --  #08 Seq. 1, continuation of Ms part
-       TT_Slot (Empty,        150*ms   ),  --  #09
-       TT_Slot (Terminal,     100*ms, 4),  --  #10 Seq. 2, terminal of Ms part
-       TT_Slot (Empty,        100*ms   ),  --  #11
-       TT_Slot (Terminal,      50*ms, 2),  --  #12 Seq. 1, terminal of Ms part
-       TT_Slot (Sync,           0*ms, 1),  --  #13 Sync Point for ET Task 1 + Empty
-
-       TT_Slot (Empty,        150*ms   ),
-
-       TT_Slot (Regular,       50*ms, 4),  --  #14 Seq. 2, F part
-       TT_Slot (Empty,        100*ms   ),  --  #15
-       TT_Slot (Regular,       50*ms, 2),  --  #16 Seq. 1, F part
-       TT_Slot (Empty,         80*ms   ),  --  #17
-       TT_Slot (Regular,       50*ms, 5),  --  #18 I part of end of plan
-       TT_Slot (Empty,         70*ms   ),  --  #19
+       TT_Slot (Regular,       50*ms, 4),  --  #05 Seq. 2, IMs part
+       TT_Slot (Empty,        300*ms   ),  --  #06
+       TT_Slot (Continuation,  50*ms, 2),  --  #07 Seq. 1, continuation of Ms part
+       TT_Slot (Empty,        150*ms   ),  --  #08
+       TT_Slot (Terminal,     100*ms, 4),  --  #09 Seq. 2, terminal of Ms part
+       TT_Slot (Empty,        100*ms   ),  --  #10
+       TT_Slot (Terminal,      50*ms, 2),  --  #11 Seq. 1, terminal of Ms part
+       TT_Slot (Sync,         150*ms, 1),  --  #12 Sync Point for ET Task 1 + Empty
+       TT_Slot (Regular,       50*ms, 4),  --  #13 Seq. 2, F part
+       TT_Slot (Empty,        100*ms   ),  --  #14
+       TT_Slot (Regular,       50*ms, 2),  --  #15 Seq. 1, F part
+       TT_Slot (Empty,         80*ms   ),  --  #16
+       TT_Slot (Regular,       50*ms, 5),  --  #17 I part of end of plan
+       TT_Slot (Empty,         70*ms   ),  --  #18
+       TT_Slot (Optional,      70*ms, 6),  --  #19 F part of synced ET Task 1
        TT_Slot (Regular,       50*ms, 5),  --  #20 F part of end of plan
-       TT_Slot (Optional,      70*ms, 6),  --  #21 F part of synced ET Task 1
-       TT_Slot (Mode_Change,   80*ms)  );  --  #22
+       TT_Slot (Mode_Change,   80*ms)  );  --  #21
 
    --  Actions of sequence initialisations
    procedure Main_Code (S : in out First_Init_Task) is  --  Simple_TT task with ID = 1
-      Jitter : Time_Span;
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
+      New_Line;
+      Put_Line ("------------------------");
+      Put_Line ("Starting plan!");
+      Put_Line ("------------------------");
+      New_Line;
+
       --  Log --
-      Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
@@ -182,10 +180,9 @@ package body TTS_Example_A is
    end Main_Code;
 
    procedure Main_Code (S : in out Second_Init_Task) is  --  Simple_TT task with ID = 3
-      Jitter : Time_Span;
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
       --  Log --
-      Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
@@ -196,10 +193,9 @@ package body TTS_Example_A is
 
    --  Actions of first sequence: IMs-F task with ID = 2
    procedure Initial_Code (S : in out First_IMF_Task) is
-      Jitter : Time_Span;
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
       --  Log --
-      Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                  Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
@@ -223,10 +219,9 @@ package body TTS_Example_A is
    end Mandatory_Code;
 
    procedure Final_Code (S : in out First_IMF_Task) is
-      Jitter : Time_Span;
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
       --  Log --
-      Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
@@ -237,10 +232,9 @@ package body TTS_Example_A is
 
    --  Actions of Second sequence: IMs-F task with ID = 4
    procedure Initial_Code (S : in out Second_IMF_Task) is
-      Jitter : Time_Span;
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
       --  Log --
-      Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
@@ -262,10 +256,9 @@ package body TTS_Example_A is
    end Mandatory_Code;
 
    procedure Final_Code (S : in out Second_IMF_Task) is
-      Jitter : Time_Span;
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
       --  Log --
-      Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
@@ -276,10 +269,9 @@ package body TTS_Example_A is
 
    --  End of plan actions: I-F task with ID = 4
    procedure Initial_Code (S : in out End_Of_Plan_IF_Task) is
-      Jitter : Time_Span;
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
       --  Log --
-      Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
@@ -290,10 +282,9 @@ package body TTS_Example_A is
    end Initial_Code;
 
    procedure Final_Code (S : in out End_Of_Plan_IF_Task) is
-      Jitter : Time_Span;
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
       --  Log --
-      Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
@@ -307,10 +298,9 @@ package body TTS_Example_A is
    end Final_Code;
 
    procedure Initial_Code (S : in out Synced_ET_Task) is
-      Jitter : Time_Span;
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
       --  Log --
-      Jitter := Clock - S.Release_Time;
       Put_line( "Synced" & Integer (S.Sync_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
@@ -328,10 +318,9 @@ package body TTS_Example_A is
    end Final_Is_Required;
 
    procedure Final_Code (S : in out Synced_ET_Task) is
-      Jitter : Time_Span;
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
       --  Log --
-      Jitter := Clock - S.Release_Time;
       Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
       --  Log --
