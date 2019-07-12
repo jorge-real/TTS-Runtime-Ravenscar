@@ -69,11 +69,9 @@ package body System.BB.Board_Support is
    -- Sys_Tick Handling --
    -----------------------
 
-   --  We use the Sys_Tick timer as a periodic timer with 1 kHz rate. This
-   --  is a trade-off between accurate delays, limited overhead and maximum
-   --  time that interrupts may be disabled.
+   --  We use the Sys_Tick timer as a periodic timer with 200 kHz rate. 
 
-   Tick_Period : constant Time.Timer_Interval := Clock_Frequency / 100_000;
+   Tick_Period : constant Time.Timer_Interval := Clock_Frequency / 200_000;
 
    type Sys_Tick_Registers is record
       SYST_CSR   : Word;

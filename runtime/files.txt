@@ -1,3 +1,7 @@
-gnarl/full/extended/a-dispat.ads
-gnarl/full/extended/a-distts.ads
-gnarl/full/extended/a-distts.adb
+gnarl/common/s-bbthre.adb
+gnarl/common/s-bbthre.ads
+gnarl/common/s-taprob.ads
+gnarl/common/s-taprob.adb
+gnarl/full/s-taskin.ads
+gnarl/full/extended/s-ttssup.adb
+gnarl/full/extended/s-ttssup.ads

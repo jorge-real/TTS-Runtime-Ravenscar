@@ -1,205 +1,61 @@
 with Ada.Real_Time;   use Ada.Real_Time;
 
---  For jitter logging  --
-with Logging_Support; use Logging_Support;
-
---  For exception tracing  --
-with Ada.Exceptions;  use Ada.Exceptions;
-with Ada.Text_IO;     use Ada.Text_IO;
-
 package body TT_Utilities is
-
-   subtype Kind_Of_Slot is TTS.Kind_Of_Slot;
-   TT_Work_Slot     : Kind_Of_Slot renames TTS.TT_Work_Slot;
-   Empty_Slot       : Kind_Of_Slot renames TTS.Empty_Slot;
-   Mode_Change_Slot : Kind_Of_Slot renames TTS.Mode_Change_Slot;
 
    ---------------------------------
    --  Constructors of Time_Slots --
    ---------------------------------
 
-   --  Auxiliary for constructing slots --
-   function New_Slot  (Kind : Kind_Of_Slot;
-                       MS : Natural;
-                       Work_Id : TT_Work_Id := TT_Work_Id'Last;
-                       Is_Continuation : Boolean := False;
-                       Is_Optional : Boolean := False) return Time_Slot;
-
-   function A_TT_Slot (Kind : Slot_Type ;
-                       Slot_Duration_MS : Natural;
-                       Work_Id : TT_Work_Id := TT_Work_Id'Last) return Time_Slot is
-      Slot_Kind : Kind_Of_Slot;
-      Is_Continuation : Boolean := False;
-      Is_Optional : Boolean := False;
+   --  Auxiliary function for constructing slots --
+   function TT_Slot (Kind          : Slot_Type ;
+                     Slot_Duration : Time_Span;
+                     Slot_Id       : Positive := Positive'Last;
+                     Padding       : Time_Span := Time_Span_Zero)
+                     return TTS.Time_Slot_Access
+   is
+      New_Slot : TTS.Time_Slot_Access;
    begin
       case Kind is
          when Empty =>
-            Slot_Kind := Empty_Slot;
+            New_Slot := new TTS.Empty_Slot'(Slot_Duration => Slot_Duration);
          when Mode_Change =>
-            Slot_Kind := Mode_Change_Slot;
+            New_Slot := new TTS.Mode_Change_Slot'(Slot_Duration => Slot_Duration);
          when Regular | Terminal =>
-            Slot_Kind := TT_Work_Slot;
+            New_Slot := new TTS.Regular_Slot'(Slot_Duration   => Slot_Duration,
+                                              Work_Id         => TTS.TT_Work_Id(Slot_Id),
+                                              Is_Continuation => False,
+                                              Padding         => Padding);
          when Continuation =>
-            Slot_Kind := TT_Work_Slot;
-            Is_Continuation := True;
+            New_Slot := new TTS.Regular_Slot'(Slot_Duration   => Slot_Duration,
+                                              Work_Id         => TTS.TT_Work_Id(Slot_Id),
+                                              Is_Continuation => True,
+                                              Padding         => Padding);
          when Optional =>
-            Slot_Kind := TT_Work_Slot;
-            Is_Optional := True;
+            New_Slot := new TTS.Optional_Slot'(Slot_Duration   => Slot_Duration,
+                                               Work_Id         => TTS.TT_Work_Id(Slot_Id),
+                                               Is_Continuation => False,
+                                               Padding         => Padding);
+         when Optional_Continuation =>
+            New_Slot := new TTS.Optional_Slot'(Slot_Duration => Slot_Duration,
+                                               Work_Id => TTS.TT_Work_Id(Slot_Id),
+                                               Is_Continuation => True,
+                                               Padding => Padding);
+         when Sync =>
+            New_Slot := new TTS.Sync_Slot'(Slot_Duration => Slot_Duration,
+                                           Sync_Id => TTS.TT_Sync_Id(Slot_Id));
       end case;
 
-      return New_Slot(Slot_Kind, Slot_Duration_MS, Work_Id, Is_Continuation, Is_Optional);
-   end A_TT_Slot;
+      return New_Slot;
+   end TT_Slot;
 
-   function New_Slot (Kind : Kind_Of_Slot;
-                      MS  : Natural;
-                      Work_Id : TT_Work_Id := TT_Work_Id'Last;
-                      Is_Continuation : Boolean := False;
-                      Is_Optional : Boolean := False) return Time_Slot
+   procedure Set_TT_Slot (Slot          : TTS.Time_Slot_Access;
+                          Kind          : Slot_Type;
+                          Slot_Duration : Time_Span;
+                          Slot_Id       : Positive := Positive'Last;
+                          Padding       : Time_Span := Ada.Real_Time.Time_Span_Zero)
    is
-      Slot : Time_Slot (Kind);
    begin
-      Slot.Slot_Duration := Ada.Real_Time.Milliseconds (MS);
-      case Slot.Kind is
-         when TT_Work_Slot =>
-            Slot.Work_Id := Work_Id;
-            Slot.Is_Continuation := Is_Continuation;
-            Slot.Is_Optional := Is_Optional;
-         when others =>
-            null;
-      end case;
-      return Slot;
-   end New_Slot;
-
-   -----------------------------------
-   --  TIME-TRIGGERED TASK PATTERNS --
-   -----------------------------------
-
-   --------------------
-   -- Simple_TT_Task --
-   --------------------
-
-   task body Simple_TT_Task is
-      When_Was_Released : Time;
-      Jitter            : Time_Span;
-      Start             : Time;
-   begin
-
-      loop
-
-         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
-
-         --  Log --
-         Jitter := Clock - When_Was_Released;
-         Log (No_Event, "|---> Jitter of Worker" & Integer (Work_Id)'Image &
-                       " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
-         Start := Clock;
-         --  Log --
-
-         Actions.all;
-
-         --  Log --
-         Log (No_Event, "Work done for worker" & Integer (Work_Id)'Image);
-         --  Log  --
-
-      end loop;
-
-   exception
-      when E : others =>
-         Put_Line ("Simple_TT_Task" &
-                     Character'Val (Character'Pos ('0') + Integer (Work_Id)) &
-                     ": " & Exception_Message (E));
-   end Simple_TT_Task;
-
-   ---------------------------
-   -- Initial_Final_TT_Task --
-   ---------------------------
-
-   task body Initial_Final_TT_Task is
-      When_Was_Released : Time;
-      Jitter            : Time_Span;
-   begin
-
-      loop
-
-         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
-
-         --  Log --
-         Jitter := Clock - When_Was_Released;
-         Log (No_Event, "|---> Jitter of I Worker" & Integer'Image (Integer (Work_Id)) &
-                       " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
-         --  Log --
-
-         Initial_Part.all;
-
-         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
-
-         --  Log --
-         Jitter := Clock - When_Was_Released;
-         Log (No_Event, "|---> Jitter of F Worker" & Integer'Image (Integer (Work_Id)) &
-                       " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
-         --  Log --
-
-         Final_Part.all;
-
-      end loop;
-
-   exception
-      when E : others =>
-         Put_Line ("TT worker W" & Character'Val (Character'Pos ('0') + Integer (Work_Id)) &
-                     ": " & Exception_Message (E));
-   end Initial_Final_TT_Task;
-
-   ------------------------------------------
-   -- InitialMandatorySliced_Final_TT_Task --
-   ------------------------------------------
-
-   task body InitialMandatorySliced_Final_TT_Task is
-      When_Was_Released : Time;
-      Jitter            : Time_Span;
-   begin
-
-      loop
-
-         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
-
-         --  Log --
-         Jitter := Clock - When_Was_Released;
-         Log (No_Event, "|---> Jitter of I Worker" & Integer'Image (Integer (Work_Id)) &
-                       " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
-         --  Log --
-
-         Initial_Part.all;
-
-         TTS.Continue_Sliced;
-         --  Log  --
-         Log (No_Event, "Continue sliced worker" & Integer (Work_Id)'Image);
-         --  Log  --
-
-         Mandatory_Sliced_Part.all;
-
-         --  Log  --
-         Log (No_Event, "Mandatory sliced done for worker" & Integer (Work_Id)'Image);
-         --  Log  --
-
-
-         TTS.Wait_For_Activation (Work_Id, When_Was_Released);
-
-         --  Log --
-         Jitter := Clock - When_Was_Released;
-         Log (No_Event, "|---> Jitter of F Worker" & Integer'Image (Integer (Work_Id)) &
-                       " = " & Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
-         --  Log --
-
-         Final_Part.all;
-
-         --  Log  --
-         Log (No_Event, "Final part done for worker" & Integer (Work_Id)'Image);
-
-      end loop;
-   exception
-      when E : others =>
-         Put_Line ("TT worker W" & Character'Val (Character'Pos ('0') + Integer (Work_Id)) &
-                     ": " & Exception_Message (E));
-   end InitialMandatorySliced_Final_TT_Task;
+      null;
+   end Set_TT_Slot;
 
 end TT_Utilities;

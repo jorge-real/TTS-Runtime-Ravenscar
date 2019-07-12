@@ -1,6 +1,13 @@
 #! /bin/bash
 
-INSTALLDIR=$(dirname $(dirname $(which arm-eabi-gcc)))
+BINFILE=$(which arm-eabi-gcc)
+if [ -z "$BINFILE" ] ; then
+    echo "Maybe GNAT environment is not properly established"
+    exit 1
+fi
+
+INSTALLDIR=$(dirname $(dirname $BINFILE))
+
 
 if [ ! -d $INSTALLDIR ] ; then
     echo "Invalid GNAT directory '$INSTALLDIR'"
@@ -11,6 +18,11 @@ else
 fi
 
 SRCDIR=${INSTALLDIR}/arm-eabi/include/rts-sources
+
+if [ ! -f files.txt ] ; then
+    echo "No installation file 'files.txt' found"
+    exit 1
+fi
 
 FILES=$(cat files.txt)
 
@@ -23,11 +35,8 @@ do
     fi
     
     f=${SRCDIR}/$i
-    
-    rm -vf ${f}
-
-    if [ -f ${f}.org ] ; then
-	mv -v ${f}.org ${f}
+    if [ -f $f ] ; then
+	cp -v ${f} ${b}
     fi
 done
 

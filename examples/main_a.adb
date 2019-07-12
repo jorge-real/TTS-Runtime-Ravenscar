@@ -5,7 +5,7 @@ with Ada.Real_Time;
 with Ada.Text_IO;    use Ada.Text_IO;
 with System;
 
-procedure Main5
+procedure Main_A
   with Priority => System.Priority'First
 is
 begin
@@ -14,4 +14,4 @@ begin
 exception
    when E : others =>
       Put_Line (Exception_Message (E));
-end Main5;
+end Main_A;

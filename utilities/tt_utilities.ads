@@ -1,29 +1,11 @@
-with Ada.Dispatching.TTS;
-with System;
+with Ada.Real_Time; use Ada.Real_Time;
+
+with XAda.Dispatching.TTS;
 
 generic
-
-   Number_Of_Work_Ids : Positive;
+   with package TTS is new XAda.Dispatching.TTS(<>);
 
 package TT_Utilities is
-
-   package TTS is new Ada.Dispatching.TTS (Number_Of_Work_Ids);
-
-   --  The following subtype declarations are user bypasses to the types
-   --    defined in TTS, a concrete instance of Ada.Dispatching.TTS.
-   --    If these were not provided here, the user code should instantiate
-   --    also Ada.Dispatching.TTS with the exact same Number_Of_Work_Ids
-   --    as in the instantiation to TT_Utilities.
-   subtype TT_Work_Id                 is TTS.TT_Work_Id;
-   subtype Time_Slot                  is TTS.Time_Slot;
-   subtype Time_Triggered_Plan        is TTS.Time_Triggered_Plan;
-   subtype Time_Triggered_Plan_Access is TTS.Time_Triggered_Plan_Access;
-
-      --  Ditto for procedure Set_Plan
-   procedure Set_Plan (TTP : Time_Triggered_Plan_Access) renames TTS.Set_Plan;
-
-   --  Access type to parameterless action procedures
-   type Task_Actions is not null access procedure;
 
    ---------------------------------------------
    --  Time_Slot kinds for building TT plans  --
@@ -33,51 +15,40 @@ package TT_Utilities is
                       Regular,
                       Terminal,
                       Continuation,
-                      Optional
+                      Optional,
+                      Optional_Continuation,
+                      Sync
                      );
 
-   ------------------------------------------------------------
-   --  Time_Slot constructor functions for building TT plans --
-   ------------------------------------------------------------
-   function A_TT_Slot (Kind             : Slot_Type ;
-                       Slot_Duration_MS : Natural;
-                       Work_Id          : TT_Work_Id := TT_Work_Id'Last) return Time_Slot;
+   ---------------------------------------
+   --  Time_Slot constructor functions  --
+   ---------------------------------------
+   function TT_Slot (Kind          : Slot_Type;
+                     Slot_Duration : Time_Span;
+                     Slot_Id       : Positive  := Positive'Last;
+                     Padding       : Time_Span := Time_Span_Zero)
+                     return TTS.Time_Slot_Access
+   --  Make sure the Slot_Duration is non-negative and
+   --  the value of Slot_Id is consistent with the kind of slot
+     with Pre => ( To_Duration (Slot_Duration) >= 0.0 and then
+                   ( case Kind is
+                     when Empty..Mode_Change =>
+                       (Slot_Id = Positive'Last),
+                     when Regular..Optional_Continuation =>
+                       (Slot_Id >= Positive (TTS.TT_Work_Id'First) and
+                        Slot_Id <= Positive (TTS.TT_Work_Id'Last)),
+                     when Sync =>
+                       (Slot_Id >= Positive (TTS.TT_Sync_Id'First) and
+                        Slot_Id <= Positive (TTS.TT_Sync_Id'Last)) ) );
 
-   -------------------------------
-   --      SIMPLE TT TASK       --
-   --                           --
-   --  Requires 1 slot per job  --
-   -------------------------------
-   task type Simple_TT_Task
-     (Work_Id : TT_Work_Id;
-      Actions : Task_Actions)
-     with Priority => System.Priority'Last - 1;
 
    ---------------------------------
-   --   INITIAL-FINAL TT TASK     --
-   --                             --
-   --  Requires 2 slots per job,  --
-   --  one for I, and one for F   --
+   --  Time_Slot setter procedure --
    ---------------------------------
-   task type Initial_Final_TT_Task
-     (Work_Id      : TT_Work_Id;
-      Initial_Part : Task_Actions;
-      Final_Part   : Task_Actions)
-     with Priority => System.Priority'Last - 1;
-
-   ----------------------------------------------------
-   --  INITIAL and MANDATORY sliced - FINAL TT TASK  --
-   --                                                --
-   --  Requires one slot for IMs, which starts the   --
-   --    sliced part, then the sliced sequence       --
-   --    ending with a terminal slot, and a slot for --
-   --    the F part                                  --
-   ----------------------------------------------------
-   task type InitialMandatorySliced_Final_TT_Task
-     (Work_Id               : TT_Work_Id;
-      Initial_Part          : Task_Actions;
-      Mandatory_Sliced_Part : Task_Actions;
-      Final_Part            : Task_Actions)
-     with Priority => System.Priority'Last - 1;
+   procedure Set_TT_Slot (Slot          : TTS.Time_Slot_Access;
+                          Kind          : Slot_Type;
+                          Slot_Duration : Time_Span;
+                          Slot_Id       : Positive := Positive'Last;
+                          Padding       : Time_Span := Time_Span_Zero);
 
 end TT_Utilities;
