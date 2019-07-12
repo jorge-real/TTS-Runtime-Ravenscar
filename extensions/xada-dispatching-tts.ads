@@ -69,7 +69,7 @@ package XAda.Dispatching.TTS is
 
    -- An optional work slot
    type Optional_Slot is new Work_Slot with null record;
-   type Optional_Slot_Access is access all Work_Slot'Class;
+   type Optional_Slot_Access is access all Optional_Slot'Class;
 
    --  Types representing/accessing TT plans
    type Time_Triggered_Plan        is array (Natural range <>) of Time_Slot_Access;
