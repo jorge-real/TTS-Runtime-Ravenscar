@@ -351,7 +351,11 @@ package body XAda.Dispatching.TTS is
             
             if Current_Slot.all in Work_Slot'Class then
                Current_Work_Slot := Work_Slot_Access(Current_Slot);
-               WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
+               -- If the invoking thread is the owner of the current Work Slot
+               --  then the slot is considered completed. 
+               if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id = Thread_Self then
+                  WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
+               end if;
             end if;
          end if;
             
