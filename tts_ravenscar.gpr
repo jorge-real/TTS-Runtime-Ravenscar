@@ -5,7 +5,7 @@ project Tts_Ravenscar is
    for Object_Dir use "obj";
    for Source_Dirs use ("examples", "utilities", "extensions");
    for Runtime ("ada") use "ravenscar-full-stm32f4";
-   for Main use ("main_a.adb");
+   for Main use ("main_a.adb", "main_b.adb");
 
    package Compiler is
       for Switches ("ada") use ("-gnat12");
