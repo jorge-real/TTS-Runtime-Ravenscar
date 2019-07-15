@@ -3,6 +3,7 @@ with Ada.Real_Time; use Ada.Real_Time;
 package body TT_Patterns is
 
    --------------------
+   -- Simple_TT_Task --
    --------------------
 
    task body Simple_TT_Task is
@@ -138,6 +139,28 @@ package body TT_Patterns is
          end if;
       end loop;
    end Initial_OptionalFinal_TT_Task;   
+
+   ---------------------------
+   -- Simple_Synced_ET_Task --
+   ---------------------------
+
+   task body Simple_Synced_ET_Task is
+   begin
+      
+      Task_State.Sync_Id := Sync_Id;
+      
+      if Synced_Init then
+         TTS.Wait_For_Sync (Sync_Id, Task_State.Release_Time);
+      end if;
+
+      Task_State.Initialize;
+
+      loop
+         TTS.Wait_For_Sync (Sync_Id, Task_State.Release_Time);
+
+         Task_State.Main_Code;
+      end loop;
+   end Simple_Synced_ET_Task;
 
    -----------------------------------------
    -- SyncedInitial_OptionalFinal_ET_Task --

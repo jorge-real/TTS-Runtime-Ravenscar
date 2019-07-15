@@ -31,10 +31,10 @@ package body TTS_Example_B is
    
    -- TT tasks --
 
-   type Task_State is new Simple_Task_State with null record;
-   procedure Initialize (S : in out Task_State) is null;
-   procedure Main_Code (S : in out Task_State);
-   type Any_Task_State is access all Task_State;
+   type TT_Task_State is new Simple_Task_State with null record;
+   procedure Initialize (S : in out TT_Task_State) is null;
+   procedure Main_Code (S : in out TT_Task_State);
+   type Any_TT_Task_State is access all TT_Task_State;
    
    type Cont_Task_State is new Simple_Task_State with
       record
@@ -43,13 +43,13 @@ package body TTS_Example_B is
    procedure Initialize (S : in out Cont_Task_State) is null;
    procedure Main_Code (S : in out Cont_Task_State);
    
-   W1_State : aliased Task_State;
-   W2_State : aliased Task_State;
-   W3_State : aliased Task_State;
+   W1_State : aliased TT_Task_State;
+   W2_State : aliased TT_Task_State;
+   W3_State : aliased TT_Task_State;
    W4_State : aliased Cont_Task_State;
-   W5_State : aliased Task_State;
-   W6_State : aliased Task_State;
-   W7_State : aliased Task_State;
+   W5_State : aliased TT_Task_State;
+   W6_State : aliased TT_Task_State;
+   W7_State : aliased TT_Task_State;
 
    W1 : Simple_TT_Task
      (Work_Id => 1,  Task_State => W1_State'Access, Synced_Init => False);
@@ -67,7 +67,7 @@ package body TTS_Example_B is
      (Work_Id => 7,  Task_State => W7_State'Access, Synced_Init => False);
 
    
-   procedure Main_Code (S : in out Task_State) is
+   procedure Main_Code (S : in out TT_Task_State) is
       Jitter : Time_Span := Clock - S.Release_Time;
    begin
       --  Log --
@@ -95,39 +95,40 @@ package body TTS_Example_B is
    end Main_Code;      
          
    --  A simple Sync task type pattern
-   task type Simple_Sync_Task
-     (Sync_Id : TTS.TT_Sync_Id;
-      State   : Any_Task_State);
-   
-   task body Simple_Sync_Task is
-      Jitter : Time_Span;
-      Released : Time;
+
+   type ET_Task_State is new Simple_Task_State with null record;
+   procedure Initialize (S : in out ET_Task_State) is null;
+   procedure Main_Code (S : in out ET_Task_State);
+   type Any_ET_Task_State is access all ET_Task_State;
+      
+   procedure Main_Code (S : in out ET_Task_State) is
+      Jitter : Time_Span := Clock - S.Release_Time;
    begin
-      State.Sync_Id := Sync_Id;
-
-      loop
-         TTS.Wait_For_Sync (State.Sync_Id, Released);
-         Jitter := Clock - Released;
-         --  Log --
-         Put_Line ("Synced" & Integer (State.Sync_Id)'Image & " Jitter = " &
-                     Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
-         --  Log --
-      end loop;
-   end Simple_Sync_Task;
+      --  Log --
+      Put_Line ("Synced" & Integer (S.Sync_Id)'Image & " Jitter = " &
+                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      --  Log --
+   end Main_Code;
    
-   S1_State : aliased Task_State;
-   S2_State : aliased Task_State;
-   S3_State : aliased Task_State;
-   S4_State : aliased Task_State;
-   S5_State : aliased Task_State;
-   S6_State : aliased Task_State;
+   S1_State : aliased ET_Task_State;
+   S2_State : aliased ET_Task_State;
+   S3_State : aliased ET_Task_State;
+   S4_State : aliased ET_Task_State;
+   S5_State : aliased ET_Task_State;
+   S6_State : aliased ET_Task_State;
 
-   S1 : Simple_Sync_Task (Sync_Id => 1, State => S1_State'Access);
-   S2 : Simple_Sync_Task (Sync_Id => 2, State => S2_State'Access);
-   S3 : Simple_Sync_Task (Sync_Id => 3, State => S3_State'Access);
-   S4 : Simple_Sync_Task (Sync_Id => 4, State => S4_State'Access);
-   S5 : Simple_Sync_Task (Sync_Id => 5, State => S5_State'Access);
-   S6 : Simple_Sync_Task (Sync_Id => 6, State => S6_State'Access);
+   S1 : Simple_Synced_ET_Task 
+     (Sync_Id => 1, Task_State => S1_State'Access, Synced_Init => False);
+   S2 : Simple_Synced_ET_Task 
+     (Sync_Id => 2, Task_State => S2_State'Access, Synced_Init => False);
+   S3 : Simple_Synced_ET_Task 
+     (Sync_Id => 3, Task_State => S3_State'Access, Synced_Init => False);
+   S4 : Simple_Synced_ET_Task 
+     (Sync_Id => 4, Task_State => S4_State'Access, Synced_Init => False);
+   S5 : Simple_Synced_ET_Task 
+     (Sync_Id => 5, Task_State => S5_State'Access, Synced_Init => False);
+   S6 : Simple_Synced_ET_Task 
+     (Sync_Id => 6, Task_State => S6_State'Access, Synced_Init => False);
 
    
    ms : constant Time_Span := Milliseconds (1);

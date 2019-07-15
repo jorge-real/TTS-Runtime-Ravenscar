@@ -102,6 +102,16 @@ package TT_Patterns is
       Task_State       : Any_Initial_OptionalFinal_Task_State;
       Synced_Init      : Boolean);
 
+   ------------------------------------
+   --  SIMPLE SYNCED ET TASK         --
+   --                                --
+   --  Requires 1 sync slot per job  --
+   ------------------------------------
+   task type Simple_Synced_ET_Task
+     (Sync_Id     : TTS.TT_Sync_Id;
+      Task_State  : Any_Simple_Task_State;
+      Synced_Init : Boolean);
+
    ----------------------------------------------------
    --  SYNC_INITIAL - [FINAL] ET TASK                --
    --                                                --
