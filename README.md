@@ -5,7 +5,7 @@ Version v0.3.0.
 This is the version cited from paper "A Hierarchical Architecture for Time- and Event-Triggered Real-Time Systems"
 _J. Real, S. Sáez., A. Crespo_, in the 24th International Conference on Reliable Software Technologies - Ada-Europe 2019, in June 2019.
 
- - The `runtime` folder contains the latest version of the modified/added runtime source files.
+ - The `runtime` folder contains the latest version of the modified/added runtime source files. These files are covered by a different license that can be found in the file [runtime/LICENSE](runtime/LICENSE)
 
  - The `extensions` folder contains the latest version of the files proposed that extends the ada runtime. API documentation can be found in [API](doc/API.md).
 
