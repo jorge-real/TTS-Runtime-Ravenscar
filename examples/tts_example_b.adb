@@ -23,21 +23,37 @@ package body TTS_Example_B is
    package TT_Patt is new TT_Patterns (TTS);
    use TT_Patt;
    
+   -- Auxiliary types
+   
+   type Jitter_Range is record 
+      Min : Time_Span := Time_Span_Last;
+      Max : Time_Span := Time_Span_First;
+   end record;
+   
    --  Auxiliary for printing times --
    function Time_Str (T : Time) return String is
      (Duration'Image ( To_Duration (T - TTS.Get_First_Plan_Release) * 1000) & " ms " &
       "|" & Duration'Image ( To_Duration (T - TTS.Get_Last_Plan_Release) * 1000) & " ms ");
    
+   procedure Update_Jitter (Jitter : in out Jitter_Range; Measurement : Time_Span) is
+   begin
+      Jitter.Min := ( if Measurement < Jitter.Min then Measurement else Jitter.Min);
+      Jitter.Max := ( if Measurement > Jitter.Max then Measurement else Jitter.Max);        
+   end Update_Jitter;
    
    -- TT tasks --
 
-   type TT_Task_State is new Simple_Task_State with null record;
+   type TT_Task_State is new Simple_Task_State with 
+      record
+         Observed_Jitter : Jitter_Range;
+      end record;
    procedure Initialize (S : in out TT_Task_State) is null;
    procedure Main_Code (S : in out TT_Task_State);
    type Any_TT_Task_State is access all TT_Task_State;
    
    type Cont_Task_State is new Simple_Task_State with
       record
+         Observed_Jitter : Jitter_Range;
          Counter : Integer ;
       end record;
    procedure Initialize (S : in out Cont_Task_State) is null;
@@ -70,18 +86,26 @@ package body TTS_Example_B is
    procedure Main_Code (S : in out TT_Task_State) is
       Jitter : Time_Span := Clock - S.Release_Time;
    begin
+      Update_Jitter(S.Observed_Jitter, Jitter);
       --  Log --
       Put_Line ("Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      Put_Line ("Worker" & Integer (S.Work_Id)'Image & " Jitter Range = [" &
+                Duration'Image (1000.0 * To_Duration (S.Observed_Jitter.Min)) & " ms," &  
+                Duration'Image (1000.0 * To_Duration (S.Observed_Jitter.Max)) & " ms]");
       --  Log --
    end Main_Code;
    
    procedure Main_Code (S : in out Cont_Task_State) is
       Jitter : Time_Span := Clock - S.Release_Time;
    begin
+      Update_Jitter(S.Observed_Jitter, Jitter);
       --  Log --
       Put_Line ("Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      Put_Line ("Worker" & Integer (S.Work_Id)'Image & " Jitter Range = [" &
+                Duration'Image (1000.0 * To_Duration (S.Observed_Jitter.Min)) & " ms," &  
+                Duration'Image (1000.0 * To_Duration (S.Observed_Jitter.Max)) & " ms]");
       --  Log --
       S.Counter := 0;
       for I in 1 .. 60_000 loop
@@ -96,7 +120,10 @@ package body TTS_Example_B is
          
    --  A simple Sync task type pattern
 
-   type ET_Task_State is new Simple_Task_State with null record;
+   type ET_Task_State is new Simple_Task_State  with 
+      record
+         Observed_Jitter : Jitter_Range;
+      end record;
    procedure Initialize (S : in out ET_Task_State) is null;
    procedure Main_Code (S : in out ET_Task_State);
    type Any_ET_Task_State is access all ET_Task_State;
@@ -104,9 +131,13 @@ package body TTS_Example_B is
    procedure Main_Code (S : in out ET_Task_State) is
       Jitter : Time_Span := Clock - S.Release_Time;
    begin
+      Update_Jitter(S.Observed_Jitter, Jitter);
       --  Log --
       Put_Line ("Synced" & Integer (S.Sync_Id)'Image & " Jitter = " &
                 Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
+      Put_Line ("Worker" & Integer (S.Sync_Id)'Image & " Jitter Range = [" &
+                Duration'Image (1000.0 * To_Duration (S.Observed_Jitter.Min)) & " ms," &  
+                Duration'Image (1000.0 * To_Duration (S.Observed_Jitter.Max)) & " ms]");
       --  Log --
    end Main_Code;
    
