@@ -1,3 +1,27 @@
+--------------------------------------------------------------------------------
+--                                                                            --
+--                            T T _ P A T T E R N S                           --
+--                                                                            --
+--                                   B O D Y                                  --
+--                                                                            --
+-- @author 2018-19 Jorge Real (jorge@disca.upv.es)                            --
+-- @author 2018-19 Sergio Saez (ssaez@disca.upv.es)                           --
+--                                                                            --
+-- This library is free software: you can redistribute it and/or modify it    --
+-- under the terms of the GNU Lesser General Public License as published by   --
+-- the Free Software Foundation, either version 3 of the License, or (at your --
+-- option) any later version.                                                 --
+--                                                                            --
+-- This library is distributed in the hope that it will be useful, but        --
+-- WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY --
+-- or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public    --
+-- License for more details.                                                  --
+--                                                                            --
+-- You should have received a copy of the GNU Lesser General Public License   --
+-- along with this program. If not, see <https://www.gnu.org/licenses/>.      --
+--                                                                            --
+--------------------------------------------------------------------------------
+
 with Ada.Real_Time; use Ada.Real_Time;
 
 package body TT_Patterns is
@@ -8,9 +32,9 @@ package body TT_Patterns is
 
    task body Simple_TT_Task is
    begin
-      
+
       Task_State.Work_Id := Work_Id;
-      
+
       if Synced_Init then
          TTS.Wait_For_Activation (Work_Id, Task_State.Release_Time);
       end if;
@@ -32,7 +56,7 @@ package body TT_Patterns is
    begin
 
       Task_State.Work_Id := Work_Id;
-      
+
       if Synced_Init then
          TTS.Wait_For_Activation (Work_Id, Task_State.Release_Time);
       end if;
@@ -58,7 +82,7 @@ package body TT_Patterns is
    begin
 
       Task_State.Work_Id := Work_Id;
-      
+
       if Synced_Init then
          TTS.Wait_For_Activation (Work_Id, Task_State.Release_Time);
       end if;
@@ -88,7 +112,7 @@ package body TT_Patterns is
    begin
 
       Task_State.Work_Id := Work_Id;
-      
+
       if Synced_Init then
          TTS.Wait_For_Activation (Work_Id, Task_State.Release_Time);
       end if;
@@ -120,25 +144,25 @@ package body TT_Patterns is
 
       if Synced_Init then
          TTS.Wait_For_Activation (Initial_Work_Id, Task_State.Release_Time);
-         Task_State.Work_Id := Initial_Work_Id;      
+         Task_State.Work_Id := Initial_Work_Id;
       end if;
 
       Task_State.Initialize;
 
       loop
          TTS.Wait_For_Activation (Initial_Work_Id, Task_State.Release_Time);
-         Task_State.Work_Id := Initial_Work_Id;      
+         Task_State.Work_Id := Initial_Work_Id;
 
          Task_State.Initial_Code;
 
          if (Task_State.Final_Is_Required) then
             TTS.Wait_For_Activation (Optional_Work_Id, Task_State.Release_Time);
-            Task_State.Work_Id := Optional_Work_Id;      
+            Task_State.Work_Id := Optional_Work_Id;
 
             Task_State.Final_Code;
          end if;
       end loop;
-   end Initial_OptionalFinal_TT_Task;   
+   end Initial_OptionalFinal_TT_Task;
 
    ---------------------------
    -- Simple_Synced_ET_Task --
@@ -146,9 +170,9 @@ package body TT_Patterns is
 
    task body Simple_Synced_ET_Task is
    begin
-      
+
       Task_State.Sync_Id := Sync_Id;
-      
+
       if Synced_Init then
          TTS.Wait_For_Sync (Sync_Id, Task_State.Release_Time);
       end if;
@@ -171,7 +195,7 @@ package body TT_Patterns is
 
       Task_State.Work_Id := Work_Id;
       Task_State.Sync_Id := Sync_Id;
-      
+
       if Synced_Init then
          TTS.Wait_For_Sync (Sync_Id, Task_State.Release_Time);
       end if;
@@ -189,6 +213,6 @@ package body TT_Patterns is
             Task_State.Final_Code;
          end if;
       end loop;
-   end SyncedInitial_OptionalFinal_ET_Task;   
+   end SyncedInitial_OptionalFinal_ET_Task;
 
 end TT_Patterns;

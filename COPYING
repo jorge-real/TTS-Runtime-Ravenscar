@@ -1,0 +1,14 @@
+extensions/
+  GNARL extensions to support Time-Trigger Scheduling in Ravenscar. 
+  It is not part of the GNAT runtime. 
+  License: LGPL (extensions/LICENSE)
+utilities/
+  Library to ease the usage of the TTS extension.  
+  It is not part of the GNAT runtime. 
+  License: LGPL (utilities/LICENSE)
+runtime/
+  Modified versions and additional files to be compiled as part of the GNARL.
+  License: GPL (runtime/LICENSE)
+examples/
+  Example files. 
+  License: GPL (examples/LICENSE)
