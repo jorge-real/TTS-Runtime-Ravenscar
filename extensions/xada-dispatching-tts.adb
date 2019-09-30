@@ -1,26 +1,17 @@
---------------------------------------------------------------------------------
---                                                                            --
---                   X A D A . D I S P A T C H I N G . T T S                  --
---                                                                            --
---                                   B O D Y                                  --
---                                                                            --
--- @author 2018-19 Jorge Real (jorge@disca.upv.es)                            --
--- @author 2018-19 Sergio Saez (ssaez@disca.upv.es)                           --
---                                                                            --
--- This library is free software: you can redistribute it and/or modify it    --
--- under the terms of the GNU Lesser General Public License as published by   --
--- the Free Software Foundation, either version 3 of the License, or (at your --
--- option) any later version.                                                 --
---                                                                            --
--- This library is distributed in the hope that it will be useful, but        --
--- WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY --
--- or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public    --
--- License for more details.                                                  --
---                                                                            --
--- You should have received a copy of the GNU Lesser General Public License   --
--- along with this program. If not, see <https://www.gnu.org/licenses/>.      --
---                                                                            --
---------------------------------------------------------------------------------
+------------------------------------------------------------
+--
+--  GNAT RUN-TIME EXTENSIONS
+--
+--  XADA . DISPATCHING . TIME-TRIGGERED SCHEDULING
+--
+--  @file x-distts.adb / xada-dispatching-tts.adb
+--
+--  @package XAda.Dispatching.TTS (BODY)
+--
+--  @author Jorge Real <jorge@disca.upv.es>
+--  @author Sergio Saez <ssaez@disca.upv.es>
+--
+------------------------------------------------------------
 
 with Ada.Task_Identification;      use Ada.Task_Identification;
 with Ada.Synchronous_Task_Control; use Ada.Synchronous_Task_Control;
@@ -33,13 +24,13 @@ with System.BB.Threads; use System.BB.Threads;
 with System.TTS_Support; use System.TTS_Support;
 
 package body XAda.Dispatching.TTS is
-
+   
    --  Conservative bound of measured overhead on a STM32F4 Discovery
    --  Since release jitter is very predictable in this platform (between
    --  23 and 24 us) we charge that overhead at the end of the slot, by
    --  effectively advancing the slot start time by the Overhead time.
    --  This reduces the release jitter even further for TT tasks, to about 3 us
-   Overhead : constant Time_Span := Microseconds (0);
+   Overhead : constant Time_Span := Microseconds (30);
 
    --  Run time TT work info
    type Work_Control_Block is record
@@ -121,21 +112,21 @@ package body XAda.Dispatching.TTS is
    ----------------------------
    -- Get_First_Plan_Release --
    ----------------------------
-
+   
    function Get_First_Plan_Release return Ada.Real_Time.Time is
    begin
       return Time_Triggered_Scheduler.Get_First_Plan_Release;
    end Get_First_Plan_Release;
-
+   
    ---------------------------
    -- Get_Last_Plan_Release --
    ---------------------------
-
+   
    function Get_Last_Plan_Release return Ada.Real_Time.Time is
    begin
       return Time_Triggered_Scheduler.Get_Last_Plan_Release;
    end Get_Last_Plan_Release;
-
+   
    --------------------
    --  Wait_For_Sync --
    --------------------
@@ -148,8 +139,8 @@ package body XAda.Dispatching.TTS is
       Time_Triggered_Scheduler.Prepare_For_Sync (Sync_Id);
 
       --  Suspend until the next sync slot for Sync_Id starts
-      --  If the sync point has been already reached in the plan,
-      --    the SO is open and the ET task will not suspend
+      --  If the sync point has been already reached in the plan, 
+      --    the SO is open and the ET task will not suspend  
       Suspend_Until_True (Sync_Point (Sync_Id));
 
       --  Scheduler updated Last_Release when it released the sync'ed task
@@ -177,19 +168,19 @@ package body XAda.Dispatching.TTS is
          --  Start new plan now if none is set. Otherwise, the scheduler will
          --  change to the Next_Plan at the end of the next mode change slot
          if Current_Plan = null then
-
+            
             --  The extra 'overhead' delay is to bypass the exception we get
             --  if we don't add it. We still have to debug this. Note that the
             --  delay only affects the first mode change, because Current_Plan
             --  is null.
             Change_Plan (Now + Milliseconds(1));
-
+            
          elsif Current_Plan (Current_Slot_Index).all in Mode_Change_Slot'Class then
-
+            
             --  Accept Set_Plan requests during a mode change slot (coming
             --  from PB tasks) and enforce the mode change at the end of it.
             Change_Plan (Next_Slot_Release);
-
+            
          end if;
 
       end Set_Plan;
@@ -219,17 +210,17 @@ package body XAda.Dispatching.TTS is
 
          if Current_Plan /= null then
             Current_Slot := Current_Plan (Current_Slot_Index);
-
+            
             if Current_Slot.all in Work_Slot'Class then
                Current_Work_Slot := Work_Slot_Access(Current_Slot);
                -- If the invoking thread is the owner of the current Work Slot
-               --  then the slot is considered completed.
+               --  then the slot is considered completed. 
                if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id = Thread_Self then
                   WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
                end if;
             end if;
          end if;
-
+            
          --  Work has been completed and the caller is about to be suspended
          WCB (Work_Id).Is_Waiting := True;
          Hold_Event.Cancel_Handler(Cancelled);
@@ -250,9 +241,9 @@ package body XAda.Dispatching.TTS is
             raise Program_Error
               with ("Continue_Sliced called from a non-TT task");
          end if;
-
+         
          Current_Work_Slot := Work_Slot_Access(Current_Slot);
-
+         
          if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id /= Thread_Self then
             raise Program_Error
               with ("Running Task does not correspond to Work_Id " &
@@ -260,12 +251,12 @@ package body XAda.Dispatching.TTS is
          end if;
 
          WCB (Current_Work_Slot.Work_Id).Is_Sliced := True;
-
+         
          if Current_Work_Slot.Padding > Time_Span_Zero then
             Hold_Event.Set_Handler (Next_Slot_Release - Current_Work_Slot.Padding,
                                     Hold_Handler_Access);
-         end if;
-
+         end if;                        
+         
       end Continue_Sliced;
 
       --------------------
@@ -285,7 +276,7 @@ package body XAda.Dispatching.TTS is
          end if;
 
          Current_Work_Slot := Work_Slot_Access(Current_Slot);
-
+         
          if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id /= Thread_Self then
             raise Program_Error
               with ("Leave_TT_Level called from Work_Id different to " &
@@ -321,21 +312,21 @@ package body XAda.Dispatching.TTS is
       ----------------------------
       -- Get_Last_First_Release --
       ----------------------------
-
+   
       function Get_First_Plan_Release return Ada.Real_Time.Time is
       begin
          return First_Plan_Release;
       end Get_First_Plan_Release;
-
+      
       ---------------------------
       -- Get_Last_Plan_Release --
       ---------------------------
-
+   
       function Get_Last_Plan_Release return Ada.Real_Time.Time is
       begin
          return First_Slot_Release;
       end Get_Last_Plan_Release;
-
+      
       ----------------------
       -- Prepare_For_Sync --
       ----------------------
@@ -360,17 +351,17 @@ package body XAda.Dispatching.TTS is
 
          if Current_Plan /= null then
             Current_Slot := Current_Plan (Current_Slot_Index);
-
+            
             if Current_Slot.all in Work_Slot'Class then
                Current_Work_Slot := Work_Slot_Access(Current_Slot);
                -- If the invoking thread is the owner of the current Work Slot
-               --  then the slot is considered completed.
+               --  then the slot is considered completed. 
                if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id = Thread_Self then
                   WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
                end if;
             end if;
          end if;
-
+            
          --  The task has to execute Suspend_Until_True after this point
       end Prepare_For_Sync;
 
@@ -392,16 +383,16 @@ package body XAda.Dispatching.TTS is
          end if;
 
          Current_Work_Slot := Work_Slot_Access(Current_Slot);
-
+         
          Current_WCB := WCB (Current_Work_Slot.Work_Id);
          Current_Thread_Id := Current_WCB.Work_Thread_Id;
-
+         
          if not Current_WCB.Has_Completed then
             Hold (Current_Thread_Id);
          end if;
-
+         
       end Hold_Handler;
-
+      
       ----------------
       -- NS_Handler --
       ----------------
@@ -450,7 +441,7 @@ package body XAda.Dispatching.TTS is
                           with ("Overrun in PA of Sliced TT task " &
                                   Current_Work_Slot.Work_Id'Image);
                      end if;
-                  else
+                  else 
                      --  Thread_Self is the currently running thread on this CPU.
                      --  If this assertion fails, the running TT task is using a
                      --  wrong slot, which should never happen
@@ -462,7 +453,7 @@ package body XAda.Dispatching.TTS is
 
                else
                   --  Overrun detected, raise Program_Error
-                  raise Program_Error
+                  raise Program_Error 
                     with ("Overrun in TT task " &
                             Current_Work_Slot.Work_Id'Image);
                end if;
@@ -496,7 +487,7 @@ package body XAda.Dispatching.TTS is
          Current_Slot := Current_Plan (Current_Slot_Index);
 
          --  Compute next slot start time
-         Next_Slot_Release := Now + Current_Slot.Slot_Duration;
+         Next_Slot_Release := Now + Current_Slot.Slot_Duration.all;
 
          if Current_Slot.all in Mode_Change_Slot'Class then
             ----------------------------------
@@ -544,7 +535,7 @@ package body XAda.Dispatching.TTS is
             Current_Work_Slot := Work_Slot_Access(Current_Slot);
             Current_WCB := WCB (Current_Work_Slot.Work_Id);
             Current_Thread_Id := Current_WCB.Work_Thread_Id;
-
+            
             --  Check what needs be done to the TT task of the new slot
             if Current_WCB.Has_Completed then
 
@@ -564,13 +555,13 @@ package body XAda.Dispatching.TTS is
                   WCB (Current_Work_Slot.Work_Id).Has_Completed := False;
                   WCB (Current_Work_Slot.Work_Id).Is_Waiting := False;
                   Set_True (Release_Point (Current_Work_Slot.Work_Id));
-
+                     
                   if Current_Work_Slot.Is_Continuation and then
                     Current_Work_Slot.Padding > Time_Span_Zero then
-                     Hold_Event.Set_Handler (Next_Slot_Release -
+                     Hold_Event.Set_Handler (Next_Slot_Release - 
                                                Current_Work_Slot.Padding,
                                              Hold_Handler_Access);
-                  end if;
+                  end if;                        
 
                elsif Current_Work_Slot.all in Optional_Slot'Class then
                   --  If the slot is optional, it is not an error if the TT
@@ -599,11 +590,11 @@ package body XAda.Dispatching.TTS is
 
                if Current_Work_Slot.Is_Continuation and then
                  Current_Work_Slot.Padding > Time_Span_Zero then
-                  Hold_Event.Set_Handler (Next_Slot_Release -
+                  Hold_Event.Set_Handler (Next_Slot_Release - 
                                             Current_Work_Slot.Padding,
                                           Hold_Handler_Access);
-               end if;
-
+               end if;                        
+         
             end if;
 
             --  Common actions to process the new slot --

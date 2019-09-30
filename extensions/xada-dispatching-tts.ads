@@ -1,27 +1,17 @@
---------------------------------------------------------------------------------
---                                                                            --
---                   X A D A . D I S P A T C H I N G . T T S                  --
---                                                                            --
---                                   S P E C                                  --
---                                                                            --
--- @author 2018-19 Jorge Real (jorge@disca.upv.es)                            --
--- @author 2018-19 Sergio Saez (ssaez@disca.upv.es)                           --
---                                                                            --
--- This library is free software: you can redistribute it and/or modify it    --
--- under the terms of the GNU Lesser General Public License as published by   --
--- the Free Software Foundation, either version 3 of the License, or (at your --
--- option) any later version.                                                 --
---                                                                            --
--- This library is distributed in the hope that it will be useful, but        --
--- WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY --
--- or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Lesser General Public    --
--- License for more details.                                                  --
---                                                                            --
--- You should have received a copy of the GNU Lesser General Public License   --
--- along with this program. If not, see <https://www.gnu.org/licenses/>.      --
---                                                                            --
---------------------------------------------------------------------------------
-
+------------------------------------------------------------
+--
+--  GNAT RUN-TIME EXTENSIONS
+--
+--  XADA . DISPATCHING . TIME-TRIGGERED SCHEDULING
+--
+--  @file x-distts.ads / xada-dispatching-tts.ads
+--
+--  @package XAda.Dispatching.TTS (SPEC)
+--
+--  @author Jorge Real <jorge@disca.upv.es>
+--  @author Sergio Saez <ssaez@disca.upv.es>
+--
+------------------------------------------------------------
 pragma Profile (Ravenscar);
 
 with Ada.Real_Time, System;
@@ -43,9 +33,16 @@ package XAda.Dispatching.TTS is
    --  when they call the scheduler
    type TT_Sync_Id is new Positive range 1 .. Number_Of_Sync_IDs;
 
+
+   --  Access type to function returning the slot duration
+   type Slot_Duration_Getter_Function is not null access
+     function return Ada.Real_Time.Time_Span;
+   --  Make it function (SD : in Time_Span := Time_Last) return Time_Span
+   --  and make it return the input parameter in case you don't want to override
+
    --  An abstract time slot in the TT plan.
    type Time_Slot is abstract tagged record
-      Slot_Duration : Ada.Real_Time.Time_Span;
+      Slot_Duration : Slot_Duration_Getter_Function;
    end record;
    type Time_Slot_Access is access all Time_Slot'Class;
 
