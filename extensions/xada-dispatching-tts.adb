@@ -30,7 +30,7 @@ package body XAda.Dispatching.TTS is
    --  23 and 24 us) we charge that overhead at the end of the slot, by
    --  effectively advancing the slot start time by the Overhead time.
    --  This reduces the release jitter even further for TT tasks, to about 3 us
-   Overhead : constant Time_Span := Microseconds (30);
+   Overhead : constant Time_Span := Microseconds (0);
 
    --  Run time TT work info
    type Work_Control_Block is record
@@ -487,7 +487,7 @@ package body XAda.Dispatching.TTS is
          Current_Slot := Current_Plan (Current_Slot_Index);
 
          --  Compute next slot start time
-         Next_Slot_Release := Now + Current_Slot.Slot_Duration.all;
+         Next_Slot_Release := Now + Current_Slot.Slot_Duration;
 
          if Current_Slot.all in Mode_Change_Slot'Class then
             ----------------------------------

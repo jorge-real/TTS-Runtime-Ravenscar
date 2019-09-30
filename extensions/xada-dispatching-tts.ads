@@ -33,16 +33,9 @@ package XAda.Dispatching.TTS is
    --  when they call the scheduler
    type TT_Sync_Id is new Positive range 1 .. Number_Of_Sync_IDs;
 
-
-   --  Access type to function returning the slot duration
-   type Slot_Duration_Getter_Function is not null access
-     function return Ada.Real_Time.Time_Span;
-   --  Make it function (SD : in Time_Span := Time_Last) return Time_Span
-   --  and make it return the input parameter in case you don't want to override
-
    --  An abstract time slot in the TT plan.
    type Time_Slot is abstract tagged record
-      Slot_Duration : Slot_Duration_Getter_Function;
+      Slot_Duration : Ada.Real_Time.Time_Span;
    end record;
    type Time_Slot_Access is access all Time_Slot'Class;
 
