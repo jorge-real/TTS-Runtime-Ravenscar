@@ -275,60 +275,58 @@ package body TTS_Example_C is
 
    
    
-   ms : constant Time_Span := Milliseconds (1);
-   function Ten_MS return Time_Span is (10*ms);
-   
+   ms : constant Time_Span := Milliseconds (1);   
    
    --  The TT plan
    TT_Plan : aliased TTS.Time_Triggered_Plan :=
-     ( TT_Slot (Empty,        Ten_MS'Access   ),  --  #00 
-       TT_Slot (Regular,      Ten_MS'Access, 1),  --  #01
-       TT_Slot (Empty,        Ten_MS'Access   ),  --  #02 
-       TT_Slot (Optional,     Ten_MS'Access, 1),  --  #03
-       TT_Slot (Empty,        Ten_MS'Access   ),  --  #04
-       TT_Slot (Sync,         Ten_MS'Access, 1),  --  #05
+     ( TT_Slot (Empty,        10*ms   ),  --  #00 
+       TT_Slot (Regular,      10*ms, 1),  --  #01
+       TT_Slot (Empty,        10*ms   ),  --  #02 
+       TT_Slot (Optional,     10*ms, 1),  --  #03
+       TT_Slot (Empty,        10*ms   ),  --  #04
+       TT_Slot (Sync,         10*ms, 1),  --  #05
        
-       TT_Slot (Mode_Change,  Ten_MS'Access   ),  --  #06 
-       TT_Slot (Regular,      Ten_MS'Access, 1),  --  #07
-       TT_Slot (Mode_Change,  Ten_MS'Access   ),  --  #08 
-       TT_Slot (Optional,     Ten_MS'Access, 1),  --  #09
-       TT_Slot (Mode_Change,  Ten_MS'Access   ),  --  #10
-       TT_Slot (Sync,         Ten_MS'Access, 1),  --  #11
+       TT_Slot (Mode_Change,  10*ms   ),  --  #06 
+       TT_Slot (Regular,      10*ms, 1),  --  #07
+       TT_Slot (Mode_Change,  10*ms   ),  --  #08 
+       TT_Slot (Optional,     10*ms, 1),  --  #09
+       TT_Slot (Mode_Change,  10*ms   ),  --  #10
+       TT_Slot (Sync,         10*ms, 1),  --  #11
        
-       TT_Slot (Regular,      Ten_MS'Access, 2),  --  #12 
-       TT_Slot (Regular,      Ten_MS'Access, 1),  --  #13
-       TT_Slot (Regular,      Ten_MS'Access, 2),  --  #14 
-       TT_Slot (Optional,     Ten_MS'Access, 1),  --  #15
-       TT_Slot (Regular,      Ten_MS'Access, 2),  --  #16 
-       TT_Slot (Sync,         Ten_MS'Access, 1),  --  #17
+       TT_Slot (Regular,      10*ms, 2),  --  #12 
+       TT_Slot (Regular,      10*ms, 1),  --  #13
+       TT_Slot (Regular,      10*ms, 2),  --  #14 
+       TT_Slot (Optional,     10*ms, 1),  --  #15
+       TT_Slot (Regular,      10*ms, 2),  --  #16 
+       TT_Slot (Sync,         10*ms, 1),  --  #17
        
-       TT_Slot (Sync,         Ten_MS'Access, 2),  --  #18 
-       TT_Slot (Regular,      Ten_MS'Access, 1),  --  #19
-       TT_Slot (Sync,         Ten_MS'Access, 2),  --  #20 
-       TT_Slot (Optional,     Ten_MS'Access, 1),  --  #21
-       TT_Slot (Sync,         Ten_MS'Access, 2),  --  #22 
-       TT_Slot (Sync,         Ten_MS'Access, 1),  --  #23
+       TT_Slot (Sync,         10*ms, 2),  --  #18 
+       TT_Slot (Regular,      10*ms, 1),  --  #19
+       TT_Slot (Sync,         10*ms, 2),  --  #20 
+       TT_Slot (Optional,     10*ms, 1),  --  #21
+       TT_Slot (Sync,         10*ms, 2),  --  #22 
+       TT_Slot (Sync,         10*ms, 1),  --  #23
        
-       TT_Slot (Optional,     Ten_MS'Access, 2),  --  #24 
-       TT_Slot (Regular,      Ten_MS'Access, 1),  --  #25
-       TT_Slot (Optional,     Ten_MS'Access, 2),  --  #26 
-       TT_Slot (Optional,     Ten_MS'Access, 1),  --  #27
-       TT_Slot (Optional,     Ten_MS'Access, 2),  --  #28 
-       TT_Slot (Sync,         Ten_MS'Access, 1),  --  #29
+       TT_Slot (Optional,     10*ms, 2),  --  #24 
+       TT_Slot (Regular,      10*ms, 1),  --  #25
+       TT_Slot (Optional,     10*ms, 2),  --  #26 
+       TT_Slot (Optional,     10*ms, 1),  --  #27
+       TT_Slot (Optional,     10*ms, 2),  --  #28 
+       TT_Slot (Sync,         10*ms, 1),  --  #29
        
-       TT_Slot (Continuation, Ten_MS'Access, 3),  --  #30
-       TT_Slot (Regular,      Ten_MS'Access, 1),  --  #31
-       TT_Slot (Terminal,     Ten_MS'Access, 3),  --  #32
+       TT_Slot (Continuation, 10*ms, 3),  --  #30
+       TT_Slot (Regular,      10*ms, 1),  --  #31
+       TT_Slot (Terminal,     10*ms, 3),  --  #32
        
-       TT_Slot (Continuation, Ten_MS'Access, 3),  --  #33
-       TT_Slot (Optional,     Ten_MS'Access, 1),  --  #34
-       TT_Slot (Terminal,     Ten_MS'Access, 3),  --  #35
+       TT_Slot (Continuation, 10*ms, 3),  --  #33
+       TT_Slot (Optional,     10*ms, 1),  --  #34
+       TT_Slot (Terminal,     10*ms, 3),  --  #35
 
-       TT_Slot (Continuation, Ten_MS'Access, 3),  --  #36
-       TT_Slot (Sync,         Ten_MS'Access, 1),  --  #37
-       TT_Slot (Terminal,     Ten_MS'Access, 3),  --  #38
+       TT_Slot (Continuation, 10*ms, 3),  --  #36
+       TT_Slot (Sync,         10*ms, 1),  --  #37
+       TT_Slot (Terminal,     10*ms, 3),  --  #38
 
-       TT_Slot (Regular,      Ten_MS'Access, 4)); --  #39
+       TT_Slot (Regular,      10*ms, 4)); --  #39
 
    
    procedure Main is
