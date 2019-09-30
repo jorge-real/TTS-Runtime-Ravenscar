@@ -24,13 +24,13 @@ package TT_Utilities is
    --  Time_Slot constructor functions  --
    ---------------------------------------
    function TT_Slot (Kind          : Slot_Type;
-                     Slot_Duration : TTS.Slot_Duration_Getter_Function;
+                     Slot_Duration : Time_Span;
                      Slot_Id       : Positive  := Positive'Last;
                      Padding       : Time_Span := Time_Span_Zero)
                      return TTS.Time_Slot_Access
    --  Make sure the Slot_Duration is non-negative and
    --  the value of Slot_Id is consistent with the kind of slot
-     with Pre => ( Slot_Duration.all >= Seconds (0) and then
+     with Pre => ( Slot_Duration >= Seconds (0) and then
                    ( case Kind is
                      when Empty..Mode_Change =>
                        (Slot_Id = Positive'Last),

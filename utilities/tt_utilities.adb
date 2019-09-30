@@ -8,7 +8,7 @@ package body TT_Utilities is
 
    --  Auxiliary function for constructing slots --
    function TT_Slot (Kind          : Slot_Type ;
-                     Slot_Duration : TTS.Slot_Duration_Getter_Function;
+                     Slot_Duration : Time_Span;
                      Slot_Id       : Positive := Positive'Last;
                      Padding       : Time_Span := Time_Span_Zero)
                      return TTS.Time_Slot_Access
