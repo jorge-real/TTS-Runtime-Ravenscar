@@ -27,7 +27,7 @@ package TT_Utilities is
                      Slot_Duration : Time_Span;
                      Slot_Id       : Positive  := Positive'Last;
                      Padding       : Time_Span := Time_Span_Zero)
-                     return TTS.Time_Slot_Access
+                     return TTS.Any_Time_Slot
    --  Make sure the Slot_Duration is non-negative and
    --  the value of Slot_Id is consistent with the kind of slot
      with Pre => ( To_Duration (Slot_Duration) >= 0.0 and then
@@ -45,7 +45,7 @@ package TT_Utilities is
    ---------------------------------
    --  Time_Slot setter procedure --
    ---------------------------------
-   procedure Set_TT_Slot (Slot          : TTS.Time_Slot_Access;
+   procedure Set_TT_Slot (Slot          : TTS.Any_Time_Slot;
                           Kind          : Slot_Type;
                           Slot_Duration : Time_Span;
                           Slot_Id       : Positive := Positive'Last;

@@ -190,8 +190,8 @@ package body XAda.Dispatching.TTS is
       ----------------------------
 
       procedure Prepare_For_Activation (Work_Id : TT_Work_Id) is
-         Current_Slot : Time_Slot_Access;
-         Current_Work_Slot : Work_Slot_Access;
+         Current_Slot : Any_Time_Slot;
+         Current_Work_Slot : Any_Work_Slot;
          Cancelled : Boolean;
       begin
          --  Register the Work_Id with the first task using it.
@@ -212,7 +212,7 @@ package body XAda.Dispatching.TTS is
             Current_Slot := Current_Plan (Current_Slot_Index);
             
             if Current_Slot.all in Work_Slot'Class then
-               Current_Work_Slot := Work_Slot_Access(Current_Slot);
+               Current_Work_Slot := Any_Work_Slot(Current_Slot);
                -- If the invoking thread is the owner of the current Work Slot
                --  then the slot is considered completed. 
                if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id = Thread_Self then
@@ -233,16 +233,16 @@ package body XAda.Dispatching.TTS is
       ---------------------
 
       procedure Continue_Sliced is
-         Current_Slot : constant Time_Slot_Access :=
+         Current_Slot : constant Any_Time_Slot :=
            Current_Plan (Current_Slot_Index);
-         Current_Work_Slot : Work_Slot_Access;
+         Current_Work_Slot : Any_Work_Slot;
       begin
          if Current_Slot.all not in Work_Slot'Class then
             raise Program_Error
               with ("Continue_Sliced called from a non-TT task");
          end if;
          
-         Current_Work_Slot := Work_Slot_Access(Current_Slot);
+         Current_Work_Slot := Any_Work_Slot(Current_Slot);
          
          if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id /= Thread_Self then
             raise Program_Error
@@ -264,9 +264,9 @@ package body XAda.Dispatching.TTS is
       --------------------
 
       procedure Leave_TT_Level is -- (Work_Id : Regular_Work_Id) is
-         Current_Slot : constant Time_Slot_Access :=
+         Current_Slot : constant Any_Time_Slot :=
            Current_Plan (Current_Slot_Index);
-         Current_Work_Slot : Work_Slot_Access;
+         Current_Work_Slot : Any_Work_Slot;
          Base_Priority : System.Priority;
          Cancelled : Boolean;
       begin
@@ -275,7 +275,7 @@ package body XAda.Dispatching.TTS is
               with ("Leave_TT_Level called from a non-TT task");
          end if;
 
-         Current_Work_Slot := Work_Slot_Access(Current_Slot);
+         Current_Work_Slot := Any_Work_Slot(Current_Slot);
          
          if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id /= Thread_Self then
             raise Program_Error
@@ -332,8 +332,8 @@ package body XAda.Dispatching.TTS is
       ----------------------
 
       procedure Prepare_For_Sync (Sync_Id : TT_Sync_Id) is
-         Current_Slot : Time_Slot_Access;
-         Current_Work_Slot : Work_Slot_Access;
+         Current_Slot : Any_Time_Slot;
+         Current_Work_Slot : Any_Work_Slot;
       begin
          --  Register the Sync_Id with the first task using it.
          --  Use of the Sync_Id by another task breaks the model and causes PE
@@ -353,7 +353,7 @@ package body XAda.Dispatching.TTS is
             Current_Slot := Current_Plan (Current_Slot_Index);
             
             if Current_Slot.all in Work_Slot'Class then
-               Current_Work_Slot := Work_Slot_Access(Current_Slot);
+               Current_Work_Slot := Any_Work_Slot(Current_Slot);
                -- If the invoking thread is the owner of the current Work Slot
                --  then the slot is considered completed. 
                if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id = Thread_Self then
@@ -371,9 +371,9 @@ package body XAda.Dispatching.TTS is
 
       procedure Hold_Handler (Event : in out Timing_Event) is
          pragma Unreferenced (Event);
-         Current_Slot : constant Time_Slot_Access :=
+         Current_Slot : constant Any_Time_Slot :=
            Current_Plan (Current_Slot_Index);
-         Current_Work_Slot : Work_Slot_Access;
+         Current_Work_Slot : Any_Work_Slot;
          Current_WCB       : Work_Control_Block;
          Current_Thread_Id : Thread_Id;
       begin
@@ -382,7 +382,7 @@ package body XAda.Dispatching.TTS is
               with ("Hold handler called for a non-TT task");
          end if;
 
-         Current_Work_Slot := Work_Slot_Access(Current_Slot);
+         Current_Work_Slot := Any_Work_Slot(Current_Slot);
          
          Current_WCB := WCB (Current_Work_Slot.Work_Id);
          Current_Thread_Id := Current_WCB.Work_Thread_Id;
@@ -399,10 +399,10 @@ package body XAda.Dispatching.TTS is
 
       procedure NS_Handler (Event : in out Timing_Event) is
          pragma Unreferenced (Event);
-         Current_Slot      : Time_Slot_Access;
-         Current_Work_Slot : Work_Slot_Access;
+         Current_Slot      : Any_Time_Slot;
+         Current_Work_Slot : Any_Work_Slot;
          Current_WCB       : Work_Control_Block;
-         Current_Sync_Slot : Sync_Slot_Access;
+         Current_Sync_Slot : Any_Sync_Slot;
          Current_Thread_Id : Thread_Id;
          Now               : Time;
       begin
@@ -424,7 +424,7 @@ package body XAda.Dispatching.TTS is
          --  Nothing to be done unless the ending slot was a TT_Work_Slot
          if Current_Slot.all in Work_Slot'Class then
 
-            Current_Work_Slot := Work_Slot_Access(Current_Slot);
+            Current_Work_Slot := Any_Work_Slot(Current_Slot);
             Current_WCB := WCB (Current_Work_Slot.Work_Id);
 
             if not Current_WCB.Has_Completed then
@@ -518,7 +518,7 @@ package body XAda.Dispatching.TTS is
             --  Process a Sync_Slot   --
             ----------------------------
 
-            Current_Sync_Slot := Sync_Slot_Access(Current_Slot);
+            Current_Sync_Slot := Any_Sync_Slot(Current_Slot);
             SCB (Current_Sync_Slot.Sync_Id).Last_Release := Now;
 
             Set_True (Sync_Point (Current_Sync_Slot.Sync_Id));
@@ -532,7 +532,7 @@ package body XAda.Dispatching.TTS is
             --  Process a Work_Slot --
             -----------------------------
 
-            Current_Work_Slot := Work_Slot_Access(Current_Slot);
+            Current_Work_Slot := Any_Work_Slot(Current_Slot);
             Current_WCB := WCB (Current_Work_Slot.Work_Id);
             Current_Thread_Id := Current_WCB.Work_Thread_Id;
             

@@ -35,29 +35,28 @@ package XAda.Dispatching.TTS is
 
    --  An abstract time slot in the TT plan
    type Time_Slot is abstract tagged record
-      Fixed_Slot_Duration : Ada.Real_Time.Time_Span;
+      Default_Slot_Duration : Ada.Real_Time.Time_Span;
    end record;
 
    function Slot_Duration (S: in Time_Slot)
-     return Ada.Real_Time.Time_Span is (S.Fixed_Slot_Duration);
+     return Ada.Real_Time.Time_Span is (S.Default_Slot_Duration);
 
-
+   type Any_Time_Slot is access all Time_Slot'Class;
 
    -- An empty time slot
    type Empty_Slot is new Time_Slot with null record;
    type Any_Empty_Slot is access all Empty_Slot'Class;
 
-
    -- A mode change time slot
    type Mode_Change_Slot is new Time_Slot with null record;
-   type Mode_Change_Slot_Access is access all Mode_Change_Slot'Class;
+   type Any_Mode_Change_Slot is access all Mode_Change_Slot'Class;
 
    -- A sync slot
    type Sync_Slot is new Time_Slot with
       record
          Sync_Id         : TT_Sync_Id;
       end record;
-   type Sync_Slot_Access is access all Sync_Slot'Class;
+   type Any_Sync_Slot is access all Sync_Slot'Class;
 
    -- A work slot
    type Work_Slot is abstract new Time_Slot with
@@ -66,18 +65,18 @@ package XAda.Dispatching.TTS is
          Is_Continuation : Boolean := False;
          Padding         : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
       end record;
-   type Work_Slot_Access is access all Work_Slot'Class;
+   type Any_Work_Slot is access all Work_Slot'Class;
 
    -- A regular slot
    type Regular_Slot is new Work_Slot with null record;
-   type Regular_Slot_Access is access all Regular_Slot'Class;
+   type Any_Regular_Slot is access all Regular_Slot'Class;
 
    -- An optional work slot
    type Optional_Slot is new Work_Slot with null record;
-   type Optional_Slot_Access is access all Optional_Slot'Class;
+   type Any_Optional_Slot is access all Optional_Slot'Class;
 
    --  Types representing/accessing TT plans
-   type Time_Triggered_Plan        is array (Natural range <>) of Time_Slot_Access;
+   type Time_Triggered_Plan        is array (Natural range <>) of Any_Time_Slot;
    type Time_Triggered_Plan_Access is access all Time_Triggered_Plan;
 
    --  Set new TT plan to start at the end of the next mode change slot
