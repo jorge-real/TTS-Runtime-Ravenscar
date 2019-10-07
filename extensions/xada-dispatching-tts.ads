@@ -48,17 +48,6 @@ package XAda.Dispatching.TTS is
    type Any_Empty_Slot is access all Empty_Slot'Class;
 
 
-
-
-   -- A flexible Empty slot
-   type Flexible_Empty_Slot is new Time_Slot with null record;
-   type Any_Flexible_Empty_Slot is access all Flexible_Empty_Slot'Class;
-
-   function Slot_Duration (S: in Flexible_Empty_Slot)
-     return Ada.Real_Time.Time_Span is abstract;
-
-
-
    -- A mode change time slot
    type Mode_Change_Slot is new Time_Slot with null record;
    type Mode_Change_Slot_Access is access all Mode_Change_Slot'Class;
