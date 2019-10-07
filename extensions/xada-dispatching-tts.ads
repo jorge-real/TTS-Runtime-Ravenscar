@@ -33,15 +33,31 @@ package XAda.Dispatching.TTS is
    --  when they call the scheduler
    type TT_Sync_Id is new Positive range 1 .. Number_Of_Sync_IDs;
 
-   --  An abstract time slot in the TT plan.
+   --  An abstract time slot in the TT plan
    type Time_Slot is abstract tagged record
-      Slot_Duration : Ada.Real_Time.Time_Span;
+      Fixed_Slot_Duration : Ada.Real_Time.Time_Span;
    end record;
-   type Time_Slot_Access is access all Time_Slot'Class;
+
+   function Slot_Duration (S: in Time_Slot)
+     return Ada.Real_Time.Time_Span is (S.Fixed_Slot_Duration);
+
+
 
    -- An empty time slot
    type Empty_Slot is new Time_Slot with null record;
-   type Empty_Slot_Access is access all Empty_Slot'Class;
+   type Any_Empty_Slot is access all Empty_Slot'Class;
+
+
+
+
+   -- A flexible Empty slot
+   type Flexible_Empty_Slot is new Time_Slot with null record;
+   type Any_Flexible_Empty_Slot is access all Flexible_Empty_Slot'Class;
+
+   function Slot_Duration (S: in Flexible_Empty_Slot)
+     return Ada.Real_Time.Time_Span is abstract;
+
+
 
    -- A mode change time slot
    type Mode_Change_Slot is new Time_Slot with null record;
