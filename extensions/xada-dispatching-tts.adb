@@ -148,6 +148,13 @@ package body XAda.Dispatching.TTS is
 
    end Wait_For_Sync;
 
+   
+   -- Returns current slot
+   function Get_Current_Slot return Any_Time_Slot is 
+   begin
+      return Time_Triggered_Scheduler.Get_Current_Slot;
+   end Get_Current_Slot;
+   
    ------------------------------
    -- Time_Triggered_Scheduler --
    ------------------------------
@@ -165,22 +172,24 @@ package body XAda.Dispatching.TTS is
          --  Take note of next plan to execute
          Next_Plan := TTP;
 
-         --  Start new plan now if none is set. Otherwise, the scheduler will
-         --  change to the Next_Plan at the end of the next mode change slot
-         if Current_Plan = null then
-            
-            --  The extra 'overhead' delay is to bypass the exception we get
-            --  if we don't add it. We still have to debug this. Note that the
-            --  delay only affects the first mode change, because Current_Plan
-            --  is null.
-            Change_Plan (Now + Milliseconds(1));
-            
-         elsif Current_Plan (Current_Slot_Index).all in Mode_Change_Slot'Class then
-            
-            --  Accept Set_Plan requests during a mode change slot (coming
-            --  from PB tasks) and enforce the mode change at the end of it.
-            Change_Plan (Next_Slot_Release);
-            
+         if Next_Plan /= null then
+            --  Start new plan now if none is set. Otherwise, the scheduler will
+            --  change to the Next_Plan at the end of the next mode change slot
+            if Current_Plan = null then
+               
+               --  The extra 'overhead' delay is to bypass the exception we get
+               --  if we don't add it. We still have to debug this. Note that the
+               --  delay only affects the first mode change, because Current_Plan
+               --  is null.
+               Change_Plan (Now + Milliseconds(1));
+               
+            elsif Current_Plan (Current_Slot_Index).all in Mode_Change_Slot'Class then
+               
+               --  Accept Set_Plan requests during a mode change slot (coming
+               --  from PB tasks) and enforce the mode change at the end of it.
+               Change_Plan (Next_Slot_Release);
+               
+            end if;
          end if;
 
       end Set_Plan;
@@ -365,6 +374,19 @@ package body XAda.Dispatching.TTS is
          --  The task has to execute Suspend_Until_True after this point
       end Prepare_For_Sync;
 
+      ----------------------
+      -- Get_Current_Slot --
+      ----------------------
+
+      function Get_Current_Slot return Any_Time_Slot is 
+      begin
+         return (if Current_Plan /= null and then not Plan_Start_Pending 
+                 then 
+                    Current_Plan (Current_Slot_Index) 
+                 else 
+                    null);
+      end Get_Current_Slot;      
+      
       ------------------
       -- Hold_Handler --
       ------------------

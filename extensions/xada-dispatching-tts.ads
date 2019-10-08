@@ -110,6 +110,9 @@ package XAda.Dispatching.TTS is
      (Sync_Id           : TT_Sync_Id;
       When_Was_Released : out Ada.Real_Time.Time);
 
+   -- Returns current slot
+   function Get_Current_Slot return Any_Time_Slot;
+
 private
 
    protected Time_Triggered_Scheduler
@@ -138,6 +141,9 @@ private
       --  Prepare work to wait for next synchronization point
       procedure Prepare_For_Sync
         (Sync_Id : TT_Sync_Id);
+
+      -- Returns current slot
+      function Get_Current_Slot return Any_Time_Slot;
 
    private
       --  New slot timing event
