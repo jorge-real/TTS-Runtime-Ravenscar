@@ -68,7 +68,7 @@ package body TTS_Example_C is
    --
    RO_Data : Reg_Opt_Cases;
    
-   --  Stats data for cases measurted by sync task
+   --  Stats data for cases measured by sync task
    Sy_Data : Sync_Cases;
    
    
