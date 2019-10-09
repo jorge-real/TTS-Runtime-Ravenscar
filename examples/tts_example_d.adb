@@ -7,7 +7,6 @@ with System; use System;
 with Epoch_Support; use Epoch_Support;
 
 with XAda.Dispatching.TTS;
-with TT_Utilities;
 with TT_Patterns;
 
 
@@ -20,8 +19,6 @@ package body TTS_Example_D is
       TT_Priority        => Priority'Last - 1);
    use TTS;
 
-   --  package TT_Util is new TT_Utilities (TTS);
-   --  use TT_Util;
 
    package TT_Patt is new TT_Patterns (TTS);
    use TT_Patt;
@@ -51,26 +48,27 @@ package body TTS_Example_D is
       Task_State  => T1_State'Access,
       Synced_Init => False);
 
+   --  Duration of (the only) regular slot in the plan
+   Reg_Duration : constant Time_Span := Milliseconds (100);
+
    type Flex_Empty is new Empty_Slot with null record;
    overriding
    function Slot_Duration (S : in Flex_Empty) return Time_Span is
-     (S.Default_Slot_Duration * (1 + Integer (Factor)) - Milliseconds (100));
+     (S.Default_Slot_Duration * (1 + Integer (Factor)) - Reg_Duration);
 
    Flex_Empty_Slot : Any_Time_Slot := new Flex_Empty'
      (Default_Slot_Duration => Seconds (1));
 
    Reg_Slot : Any_Time_Slot := new TTS.Regular_Slot'
-     (Default_Slot_Duration   => Milliseconds (100),
+     (Default_Slot_Duration   => Reg_Duration,
       Work_Id                 => 1,
       Is_Continuation         => False,
       Padding                 => Time_Span_Zero);
 
-   --  -------  --
-   --  TT Plan  --
-   --  -------  --
 
+   --  The Time-Triggered plan
    TT_Plan : aliased TTS.Time_Triggered_Plan :=
-     ( Reg_Slot, Flex_Empty_Slot );
+     (Reg_Slot, Flex_Empty_Slot);
 
 
    procedure Main is
