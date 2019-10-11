@@ -32,6 +32,9 @@ package body XAda.Dispatching.TTS is
    --  This reduces the release jitter even further for TT tasks, to about 3 us
    Overhead : constant Time_Span := Microseconds (0);
 
+   --  Type of event to be programmed
+   type Scheduling_Point_Type is (Hold_Point, End_Of_Work_Point, Next_Slot_Point);
+   
    --  Run time TT work info
    type Work_Control_Block is record
       Has_Completed   : Boolean   := True;     --  TT part has completed
@@ -72,7 +75,7 @@ package body XAda.Dispatching.TTS is
    --  Wait_For_Activation --
    --------------------------
    procedure Wait_For_Activation
-     (Work_Id : TT_Work_Id;
+     (Work_Id           : TT_Work_Id;
       When_Was_Released : out Time) is
    begin
 
@@ -132,7 +135,7 @@ package body XAda.Dispatching.TTS is
    --------------------
 
    procedure Wait_For_Sync
-     (Sync_Id : TT_Sync_Id;
+     (Sync_Id           : TT_Sync_Id;
       When_Was_Released : out Time) is
    begin
       --  Inform the TT scheduler the ET task has reached the sync point
@@ -181,7 +184,7 @@ package body XAda.Dispatching.TTS is
                --  if we don't add it. We still have to debug this. Note that the
                --  delay only affects the first mode change, because Current_Plan
                --  is null.
-               Change_Plan (Now + Milliseconds(1));
+               Change_Plan (Now + Milliseconds (1));
                
             elsif Current_Plan (Current_Slot_Index).all in Mode_Change_Slot'Class then
                
@@ -199,9 +202,9 @@ package body XAda.Dispatching.TTS is
       ----------------------------
 
       procedure Prepare_For_Activation (Work_Id : TT_Work_Id) is
-         Current_Slot : Any_Time_Slot;
+         Current_Slot      : Any_Time_Slot;
          Current_Work_Slot : Any_Work_Slot;
-         Cancelled : Boolean;
+         Cancelled         : Boolean;
       begin
          --  Register the Work_Id with the first task using it.
          --  Use of the Work_Id by another task breaks the model and causes PE
@@ -221,7 +224,7 @@ package body XAda.Dispatching.TTS is
             Current_Slot := Current_Plan (Current_Slot_Index);
             
             if Current_Slot.all in Work_Slot'Class then
-               Current_Work_Slot := Any_Work_Slot(Current_Slot);
+               Current_Work_Slot := Any_Work_Slot (Current_Slot);
                -- If the invoking thread is the owner of the current Work Slot
                --  then the slot is considered completed. 
                if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id = Thread_Self then
@@ -232,7 +235,13 @@ package body XAda.Dispatching.TTS is
             
          --  Work has been completed and the caller is about to be suspended
          WCB (Work_Id).Is_Waiting := True;
-         Hold_Event.Cancel_Handler(Cancelled);
+         --  Cancel the Hold and End of Work handlers, if required
+         Hold_Event.Cancel_Handler (Cancelled);
+         End_Of_Work_Event.Cancel_Handler (Cancelled);
+         
+         --  Set timing event for the next scheduling point
+         Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                      Next_Slot_Handler_Access);                        
 
          --  The task has to execute Suspend_Until_True after this point
       end Prepare_For_Activation;
@@ -242,16 +251,17 @@ package body XAda.Dispatching.TTS is
       ---------------------
 
       procedure Continue_Sliced is
-         Current_Slot : constant Any_Time_Slot :=
+         Current_Slot      : constant Any_Time_Slot :=
            Current_Plan (Current_Slot_Index);
          Current_Work_Slot : Any_Work_Slot;
+         Cancelled         : Boolean;
       begin
          if Current_Slot.all not in Work_Slot'Class then
             raise Program_Error
               with ("Continue_Sliced called from a non-TT task");
          end if;
          
-         Current_Work_Slot := Any_Work_Slot(Current_Slot);
+         Current_Work_Slot := Any_Work_Slot (Current_Slot);
          
          if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id /= Thread_Self then
             raise Program_Error
@@ -262,8 +272,12 @@ package body XAda.Dispatching.TTS is
          WCB (Current_Work_Slot.Work_Id).Is_Sliced := True;
          
          if Current_Work_Slot.Padding > Time_Span_Zero then
-            Hold_Event.Set_Handler (Next_Slot_Release - Current_Work_Slot.Padding,
+            End_Of_Work_Event.Cancel_Handler (Cancelled);
+            Hold_Event.Set_Handler (Hold_Release - Overhead,
                                     Hold_Handler_Access);
+         else 
+            End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
+                                           End_Of_Work_Access);            
          end if;                        
          
       end Continue_Sliced;
@@ -273,18 +287,18 @@ package body XAda.Dispatching.TTS is
       --------------------
 
       procedure Leave_TT_Level is -- (Work_Id : Regular_Work_Id) is
-         Current_Slot : constant Any_Time_Slot :=
+         Current_Slot      : constant Any_Time_Slot :=
            Current_Plan (Current_Slot_Index);
          Current_Work_Slot : Any_Work_Slot;
-         Base_Priority : System.Priority;
-         Cancelled : Boolean;
+         Base_Priority     : System.Priority;
+         Cancelled         : Boolean;
       begin
          if Current_Slot.all not in Work_Slot'Class then
             raise Program_Error
               with ("Leave_TT_Level called from a non-TT task");
          end if;
 
-         Current_Work_Slot := Any_Work_Slot(Current_Slot);
+         Current_Work_Slot := Any_Work_Slot (Current_Slot);
          
          if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id /= Thread_Self then
             raise Program_Error
@@ -293,7 +307,13 @@ package body XAda.Dispatching.TTS is
          end if;
 
          WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
-         Hold_Event.Cancel_Handler(Cancelled);
+         --  Cancel the Hold and End of Work handlers, if required
+         Hold_Event.Cancel_Handler (Cancelled);
+         End_Of_Work_Event.Cancel_Handler (Cancelled);
+         
+         --  Set timing event for the next scheduling point
+         Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                      Next_Slot_Handler_Access);                        
 
          Base_Priority :=
            WCB (Current_Work_Slot.Work_Id).Work_Thread_Id.Base_Priority;
@@ -315,7 +335,7 @@ package body XAda.Dispatching.TTS is
          Next_Slot_Index := Current_Plan.all'First;
          Next_Slot_Release := At_Time;
          Plan_Start_Pending := True;
-         NS_Event.Set_Handler (At_Time - Overhead, NS_Handler_Access);
+         Next_Slot_Event.Set_Handler (At_Time - Overhead, Next_Slot_Handler_Access);
       end Change_Plan;
 
       ----------------------------
@@ -341,7 +361,7 @@ package body XAda.Dispatching.TTS is
       ----------------------
 
       procedure Prepare_For_Sync (Sync_Id : TT_Sync_Id) is
-         Current_Slot : Any_Time_Slot;
+         Current_Slot      : Any_Time_Slot;
          Current_Work_Slot : Any_Work_Slot;
       begin
          --  Register the Sync_Id with the first task using it.
@@ -362,7 +382,7 @@ package body XAda.Dispatching.TTS is
             Current_Slot := Current_Plan (Current_Slot_Index);
             
             if Current_Slot.all in Work_Slot'Class then
-               Current_Work_Slot := Any_Work_Slot(Current_Slot);
+               Current_Work_Slot := Any_Work_Slot (Current_Slot);
                -- If the invoking thread is the owner of the current Work Slot
                --  then the slot is considered completed. 
                if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id = Thread_Self then
@@ -393,7 +413,7 @@ package body XAda.Dispatching.TTS is
 
       procedure Hold_Handler (Event : in out Timing_Event) is
          pragma Unreferenced (Event);
-         Current_Slot : constant Any_Time_Slot :=
+         Current_Slot      : constant Any_Time_Slot :=
            Current_Plan (Current_Slot_Index);
          Current_Work_Slot : Any_Work_Slot;
          Current_WCB       : Work_Control_Block;
@@ -404,85 +424,40 @@ package body XAda.Dispatching.TTS is
               with ("Hold handler called for a non-TT task");
          end if;
 
-         Current_Work_Slot := Any_Work_Slot(Current_Slot);
+         Current_Work_Slot := Any_Work_Slot (Current_Slot);
          
          Current_WCB := WCB (Current_Work_Slot.Work_Id);
          Current_Thread_Id := Current_WCB.Work_Thread_Id;
          
+         --  TODO: Check if this condition is required
          if not Current_WCB.Has_Completed then
             Hold (Current_Thread_Id);
+
+            --  Set timing event for the next scheduling point
+            End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
+                                           End_Of_Work_Access);
+            --  Next_Slot handler will be set when this work was finished
          end if;
          
       end Hold_Handler;
       
-      ----------------
-      -- NS_Handler --
-      ----------------
+      ----------------------
+      -- Next_Slot_Handler --
+      ----------------------
 
-      procedure NS_Handler (Event : in out Timing_Event) is
+      procedure Next_Slot_Handler (Event : in out Timing_Event) is
          pragma Unreferenced (Event);
          Current_Slot      : Any_Time_Slot;
          Current_Work_Slot : Any_Work_Slot;
          Current_WCB       : Work_Control_Block;
          Current_Sync_Slot : Any_Sync_Slot;
          Current_Thread_Id : Thread_Id;
+         Scheduling_Point  : Scheduling_Point_Type;
          Now               : Time;
       begin
 
          --  This is the current time, according to the plan
          Now := Next_Slot_Release;
-
-         --------------------------
-         --  PROCESS ENDING SLOT --
-         --------------------------
-
-         --  Check for overrun in the ending slot, if it is a TT_Work_Slot.
-         --  If this happens to be the first slot after a plan change, then
-         --  we come from a mode-change slot, so there is no overrun to check,
-         --  because it was checked before that mode-change slot
-
-         Current_Slot := Current_Plan (Current_Slot_Index);
-
-         --  Nothing to be done unless the ending slot was a TT_Work_Slot
-         if Current_Slot.all in Work_Slot'Class then
-
-            Current_Work_Slot := Any_Work_Slot(Current_Slot);
-            Current_WCB := WCB (Current_Work_Slot.Work_Id);
-
-            if not Current_WCB.Has_Completed then
-               --  Possible overrun detected, unless task is running sliced.
-               --  First check that all is going well
-               Current_Thread_Id := Current_WCB.Work_Thread_Id;
-
-               --  Check whether the task is running sliced or this is
-               --  a real overrun situation
-               if Current_WCB.Is_Sliced then
-                  if Current_Work_Slot.Padding > Time_Span_Zero then
-                     if Current_Thread_Id.Hold_Signaled then
-                        raise Program_Error
-                          with ("Overrun in PA of Sliced TT task " &
-                                  Current_Work_Slot.Work_Id'Image);
-                     end if;
-                  else 
-                     --  Thread_Self is the currently running thread on this CPU.
-                     --  If this assertion fails, the running TT task is using a
-                     --  wrong slot, which should never happen
-                     pragma Assert (Current_Thread_Id = Thread_Self);
-
-                     Hold (Current_Thread_Id, True);
-                  end if;
-                  --  Context switch occurs after executing this handler
-
-               else
-                  --  Overrun detected, raise Program_Error
-                  raise Program_Error 
-                    with ("Overrun in TT task " &
-                            Current_Work_Slot.Work_Id'Image);
-               end if;
-
-            end if;
-
-         end if;
 
          ---------------------------
          -- PROCESS STARTING SLOT --
@@ -510,6 +485,13 @@ package body XAda.Dispatching.TTS is
 
          --  Compute next slot start time
          Next_Slot_Release := Now + Current_Slot.Slot_Duration;
+         --  Default values for end of work and hold releases. 
+         --  They will be overwritten if needed
+         End_Of_Work_Release := Next_Slot_Release; 
+         Hold_Release := Next_Slot_Release; 
+         
+         --  Default scheduling point
+         Scheduling_Point := Next_Slot_Point;
 
          if Current_Slot.all in Mode_Change_Slot'Class then
             ----------------------------------
@@ -519,44 +501,40 @@ package body XAda.Dispatching.TTS is
             if Next_Plan /= null then
                --  There's a pending plan change.
                --   It takes effect at the end of the MC slot
+               
+               -- ??? CHECK THIS
                Change_Plan (Next_Slot_Release);
-            else
-               --  Set the handler for the next scheduling point
-               NS_Event.Set_Handler (Next_Slot_Release - Overhead,
-                                     NS_Handler_Access);
             end if;
 
          elsif Current_Slot.all in Empty_Slot'Class then
             -----------------------------
             --  Process an Empty_Slot  --
             -----------------------------
-
-            --  Just set the handler for the next scheduling point
-            NS_Event.Set_Handler (Next_Slot_Release - Overhead,
-                                  NS_Handler_Access);
-
+            
+            null;
+            
          elsif Current_Slot.all in Sync_Slot'Class then
             ----------------------------
             --  Process a Sync_Slot   --
             ----------------------------
 
-            Current_Sync_Slot := Any_Sync_Slot(Current_Slot);
+            Current_Sync_Slot := Any_Sync_Slot (Current_Slot);
             SCB (Current_Sync_Slot.Sync_Id).Last_Release := Now;
 
             Set_True (Sync_Point (Current_Sync_Slot.Sync_Id));
-
-            --  Set the handler for the next scheduling point
-            NS_Event.Set_Handler (Next_Slot_Release - Overhead,
-                                  NS_Handler_Access);
 
          elsif Current_Slot.all in Work_Slot'Class then
             -----------------------------
             --  Process a Work_Slot --
             -----------------------------
 
-            Current_Work_Slot := Any_Work_Slot(Current_Slot);
+            Current_Work_Slot := Any_Work_Slot (Current_Slot);
             Current_WCB := WCB (Current_Work_Slot.Work_Id);
             Current_Thread_Id := Current_WCB.Work_Thread_Id;
+            
+            -- This value can be used within the Hold_Handler
+            End_Of_Work_Release := Now + Current_Work_Slot.Work_Duration;
+            Hold_Release := End_Of_Work_Release - Current_Work_Slot.Padding;
             
             --  Check what needs be done to the TT task of the new slot
             if Current_WCB.Has_Completed then
@@ -567,11 +545,12 @@ package body XAda.Dispatching.TTS is
                if Current_WCB.Is_Sliced then
                   --  The completed TT task was running sliced and it has
                   --   completed, so this slot is not needed by the task.
-                  null;
 
+                  null;
+                  
                elsif Current_WCB.Is_Waiting then
                   --  TT task is waiting in Wait_For_Activation
-
+                  
                   --  Update WCB and release TT task
                   WCB (Current_Work_Slot.Work_Id).Last_Release := Now;
                   WCB (Current_Work_Slot.Work_Id).Has_Completed := False;
@@ -580,15 +559,16 @@ package body XAda.Dispatching.TTS is
                      
                   if Current_Work_Slot.Is_Continuation and then
                     Current_Work_Slot.Padding > Time_Span_Zero then
-                     Hold_Event.Set_Handler (Next_Slot_Release - 
-                                               Current_Work_Slot.Padding,
-                                             Hold_Handler_Access);
+                     Scheduling_Point := Hold_Point;
+                  else                     
+                     Scheduling_Point := End_Of_Work_Point;
                   end if;                        
 
                elsif Current_Work_Slot.all in Optional_Slot'Class then
                   --  If the slot is optional, it is not an error if the TT
                   --    task has not invoked Wait_For_Activation
-                  null;
+                  
+                  null;                  
                else
                   --  Task is not waiting for its next activation.
                   --  It must have abandoned the TT Level or it is waiting in
@@ -612,11 +592,11 @@ package body XAda.Dispatching.TTS is
 
                if Current_Work_Slot.Is_Continuation and then
                  Current_Work_Slot.Padding > Time_Span_Zero then
-                  Hold_Event.Set_Handler (Next_Slot_Release - 
-                                            Current_Work_Slot.Padding,
-                                          Hold_Handler_Access);
+                  Scheduling_Point := Hold_Point;
+               else                     
+                  Scheduling_Point := End_Of_Work_Point;
                end if;                        
-         
+
             end if;
 
             --  Common actions to process the new slot --
@@ -624,12 +604,106 @@ package body XAda.Dispatching.TTS is
             --  Is_Continuation property of the new slot
             WCB (Current_Work_Slot.Work_Id).Is_Sliced :=
               Current_Work_Slot.Is_Continuation;
-
-            --  Set timing event for the next scheduling point
-            NS_Event.Set_Handler (Next_Slot_Release - Overhead,
-                                  NS_Handler_Access);
+            
          end if;
-      end NS_Handler;
+
+         --  Set timing event for the next scheduling point
+         case Scheduling_Point is 
+            when Next_Slot_Point =>
+               Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                            Next_Slot_Handler_Access);               
+            when End_Of_Work_Point =>
+               End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
+                                              End_Of_Work_Access);
+               --  Next_Slot handler will be set when this work was finished
+            when Hold_Point =>
+               Hold_Event.Set_Handler (Hold_Release - Overhead,
+                                       Hold_Handler_Access);
+               --  End_of_Work handler will be set when this event was 
+               --  triggered
+         end case;
+         
+      end Next_Slot_Handler;
+
+      -------------------------
+      -- End_Of_Work_Handler --
+      -------------------------
+
+      procedure End_Of_Work_Handler (Event : in out Timing_Event) is
+         Current_Slot      : Any_Time_Slot;
+         Current_Work_Slot : Any_Work_Slot;
+         Current_WCB       : Work_Control_Block;
+         Current_Thread_Id : Thread_Id;
+         Now               : Time;
+      begin
+
+         --  This is the current time, according to the plan
+         Now := End_Of_Work_Release;
+
+         ----------------------------------
+         --  PROCESS ENDING OF WORK SLOT --
+         ----------------------------------
+
+         --  Check for overrun in the ending slot, if it is a Work_Slot.
+         --  If this happens to be the first slot after a plan change, then
+         --  we come from a mode-change slot, so there is no overrun to check,
+         --  because it was checked before that mode-change slot
+
+         Current_Slot := Current_Plan (Current_Slot_Index);
+
+         --  Nothing to be done unless the ending slot was a Work_Slot
+         --  TODO: Check if this condition is required
+         if Current_Slot.all in Work_Slot'Class then
+
+            Current_Work_Slot := Any_Work_Slot (Current_Slot);
+            Current_WCB := WCB (Current_Work_Slot.Work_Id);
+
+            if not Current_WCB.Has_Completed then
+               --  Possible overrun detected, unless task is running sliced.
+               --  First check that all is going well
+               Current_Thread_Id := Current_WCB.Work_Thread_Id;
+
+               --  Check whether the task is running sliced or this is
+               --  a real overrun situation
+               if Current_WCB.Is_Sliced then
+                  if Current_Work_Slot.Padding > Time_Span_Zero then
+                     if Current_Thread_Id.Hold_Signaled then
+                        raise Program_Error
+                          with ("Overrun in PA of Sliced TT task " &
+                                  Current_Work_Slot.Work_Id'Image);
+                     end if;
+                  else 
+                     --  Thread_Self is the currently running thread on this CPU.
+                     --  If this assertion fails, the running TT task is using a
+                     --  wrong slot, which should never happen
+                     pragma Assert (Current_Thread_Id = Thread_Self);
+
+                     Hold (Current_Thread_Id, True);
+                     
+                     if (Next_Slot_Release > Now) then 
+                        --  Set timing event for the next scheduling point
+                        Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                                     Next_Slot_Handler_Access);
+                     else
+                        --  Directly process the new slot event
+                        Next_Slot_Handler (Event);
+                     end if;
+
+                  end if;
+                  --  Context switch occurs after executing this handler
+
+               else
+                  --  Overrun detected, raise Program_Error
+                  raise Program_Error 
+                    with ("Overrun in TT task " &
+                            Current_Work_Slot.Work_Id'Image);
+               end if;
+               
+            end if;            
+            
+         end if;
+
+      end End_Of_Work_Handler;
 
    end Time_Triggered_Scheduler;
 

@@ -21,7 +21,7 @@ generic
 
    Number_Of_Work_IDs : Positive;
    Number_Of_Sync_IDs : Positive := 1;
-   TT_Priority : System.Priority := System.Priority'Last;
+   TT_Priority        : System.Priority := System.Priority'Last;
 
 package XAda.Dispatching.TTS is
 
@@ -35,11 +35,11 @@ package XAda.Dispatching.TTS is
 
    --  An abstract time slot in the TT plan
    type Time_Slot is abstract tagged record
-      Default_Slot_Duration : Ada.Real_Time.Time_Span;
+      Slot_Size : Ada.Real_Time.Time_Span;
    end record;
 
    function Slot_Duration (S: in Time_Slot)
-     return Ada.Real_Time.Time_Span is (S.Default_Slot_Duration);
+     return Ada.Real_Time.Time_Span is (S.Slot_Size);
 
    type Any_Time_Slot is access all Time_Slot'Class;
 
@@ -62,9 +62,14 @@ package XAda.Dispatching.TTS is
    type Work_Slot is abstract new Time_Slot with
       record
          Work_Id         : TT_Work_Id;
+         Work_Size       : Ada.Real_Time.Time_Span;
          Is_Continuation : Boolean := False;
          Padding         : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
       end record;
+
+   function Work_Duration (S: in Work_Slot)
+     return Ada.Real_Time.Time_Span is (S.Work_Size);
+
    type Any_Work_Slot is access all Work_Slot'Class;
 
    -- A regular slot
@@ -147,17 +152,30 @@ private
 
    private
       --  New slot timing event
-      NS_Event : Ada.Real_Time.Timing_Events.Timing_Event;
+      Next_Slot_Event : Ada.Real_Time.Timing_Events.Timing_Event;
 
       --  New slot handler procedure
-      procedure NS_Handler
+      procedure Next_Slot_Handler
         (Event : in out Ada.Real_Time.Timing_Events.Timing_Event);
 
       --  This access object is the reason why the scheduler is declared
       --  in this private part, given that this is a generic package.
       --  It should be a constant, but a PO can't have constant components.
-      NS_Handler_Access : Ada.Real_Time.Timing_Events.Timing_Event_Handler :=
-        NS_Handler'Access;
+      Next_Slot_Handler_Access : Ada.Real_Time.Timing_Events.Timing_Event_Handler :=
+        Next_Slot_Handler'Access;
+
+      --  End of Work timing event
+      End_Of_Work_Event : Ada.Real_Time.Timing_Events.Timing_Event;
+
+      --  End of Work handler procedure
+      procedure End_Of_Work_Handler
+        (Event : in out Ada.Real_Time.Timing_Events.Timing_Event);
+
+      --  This access object is the reason why the scheduler is declared
+      --  in this private part, given that this is a generic package.
+      --  It should be a constant, but a PO can't have constant components.
+      End_Of_Work_Access : Ada.Real_Time.Timing_Events.Timing_Event_Handler :=
+        End_Of_Work_Handler'Access;
 
       --  Hold timing event
       Hold_Event : Ada.Real_Time.Timing_Events.Timing_Event;
@@ -186,6 +204,12 @@ private
 
       --  Start time of next slot
       Next_Slot_Release  : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
+
+      --  End of current work slot
+      End_Of_Work_Release : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
+
+      --  Hold time for a work slot
+      Hold_Release       : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
       --  Start time of the current plan
       Plan_Start_Pending : Boolean := True;
