@@ -14,5 +14,5 @@ _J. Real, S. Sáez., A. Crespo_, in the 24th International Conference on Reliabl
  - The `examples` folder contains an example application for the STM34F4 Discovery board. To observe its output, you can for example use "debug on board" from GPS and see the printed messages in the st-util window.
 
 
-Version v0.2.0: <a href="https://doi.org/10.5281/zenodo.1206197"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.1206197.svg" alt="DOI"></a>
+Version v0.2.0: <a href="https://doi.org/10.5281/zenodo.3490505"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.3490505.svg" alt="DOI"></a>
 
