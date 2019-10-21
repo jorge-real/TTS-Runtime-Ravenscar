@@ -31,7 +31,7 @@ package body XAda.Dispatching.TTS is
    --  effectively advancing the slot start time by the Overhead time.
    --  This reduces the release jitter even further for TT tasks, to about 3 us
    Overhead : constant Time_Span := Microseconds (0);
-
+   
    --  Type of event to be programmed
    type Scheduling_Point_Type is (Hold_Point, End_Of_Work_Point, Next_Slot_Point);
    
@@ -66,9 +66,10 @@ package body XAda.Dispatching.TTS is
    --  Set_Plan  --
    ----------------
 
-   procedure Set_Plan (TTP : Time_Triggered_Plan_Access) is
+   procedure Set_Plan (TTP : Time_Triggered_Plan_Access;
+                       At_Time : Time := End_Of_MC_Slot) is
    begin
-      Time_Triggered_Scheduler.Set_Plan (TTP);
+      Time_Triggered_Scheduler.Set_Plan (TTP, At_Time);
    end Set_Plan;
 
    --------------------------
@@ -168,30 +169,45 @@ package body XAda.Dispatching.TTS is
       -- Set_Plan --
       --------------
 
-      procedure Set_Plan (TTP : Time_Triggered_Plan_Access) is
+      procedure Set_Plan (TTP : Time_Triggered_Plan_Access;
+                          At_Time : Time) is
          Now : constant Time := Clock;
       begin
 
          --  Take note of next plan to execute
          Next_Plan := TTP;
-
+         
          if Next_Plan /= null then
+            Next_Mode_Release := At_Time;              
+            
             --  Start new plan now if none is set. Otherwise, the scheduler will
             --  change to the Next_Plan at the end of the next mode change slot
             if Current_Plan = null then
                
-               --  The extra 'overhead' delay is to bypass the exception we get
-               --  if we don't add it. We still have to debug this. Note that the
-               --  delay only affects the first mode change, because Current_Plan
-               --  is null.
-               Change_Plan (Now + Milliseconds (1));
+               if Next_Mode_Release = End_Of_MC_Slot or else Next_Mode_Release <= Now then
+                  --  The extra 'overhead' delay is to bypass the exception we get
+                  --  if we don't add it. We still have to debug this. Note that the
+                  --  delay only affects the first mode change, because Current_Plan
+                  --  is null.               
+                  Change_Plan (Now + Milliseconds (1));
+               else
+                  Change_Plan (Next_Mode_Release);
+               end if;
                
             elsif Current_Plan (Current_Slot_Index).all in Mode_Change_Slot'Class then
                
                --  Accept Set_Plan requests during a mode change slot (coming
-               --  from PB tasks) and enforce the mode change at the end of it.
-               Change_Plan (Next_Slot_Release);
-               
+               --  from PB tasks) and enforce the mode change.
+               if Next_Mode_Release = End_Of_MC_Slot then
+                  Change_Plan (Next_Slot_Release);
+               elsif Next_Mode_Release <= Now then 
+                  Change_Plan (Now);
+               elsif Next_Mode_Release <= Next_Slot_Release then
+                  Change_Plan (Next_Mode_Release);
+               else
+                  --  Mode change request remains pending
+                  null;                  
+               end if;
             end if;
          end if;
 
@@ -501,9 +517,16 @@ package body XAda.Dispatching.TTS is
             if Next_Plan /= null then
                --  There's a pending plan change.
                --   It takes effect at the end of the MC slot
-               
-               -- ??? CHECK THIS
-               Change_Plan (Next_Slot_Release);
+               if Next_Mode_Release = End_Of_MC_Slot then 
+                  Change_Plan (Next_Slot_Release);
+               elsif Next_Mode_Release <= Now then
+                  Change_Plan (Now);
+               elsif Next_Mode_Release <= Next_Slot_Release then
+                  Change_Plan (Next_Mode_Release);
+               else
+                  --  Mode change request remains pending
+                  null;
+               end if;
             end if;
 
          elsif Current_Slot.all in Empty_Slot'Class then
@@ -615,12 +638,11 @@ package body XAda.Dispatching.TTS is
             when End_Of_Work_Point =>
                End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
                                               End_Of_Work_Access);
-               --  Next_Slot handler will be set when this work was finished
+               --  Next_Slot handler will be set when this work finishes
             when Hold_Point =>
                Hold_Event.Set_Handler (Hold_Release - Overhead,
                                        Hold_Handler_Access);
-               --  End_of_Work handler will be set when this event was 
-               --  triggered
+               --  End_of_Work handler will be set when this event triggers
          end case;
          
       end Next_Slot_Handler;

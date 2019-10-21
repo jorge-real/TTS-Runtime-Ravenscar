@@ -84,9 +84,13 @@ package XAda.Dispatching.TTS is
    type Time_Triggered_Plan        is array (Natural range <>) of Any_Time_Slot;
    type Time_Triggered_Plan_Access is access all Time_Triggered_Plan;
 
+   --  To represent the end of a mode change slot
+   End_Of_MC_Slot : constant Ada.Real_Time.Time;
+
    --  Set new TT plan to start at the end of the next mode change slot
    procedure Set_Plan
-     (TTP : Time_Triggered_Plan_Access);
+     (TTP : Time_Triggered_Plan_Access;
+      At_Time : Ada.Real_Time.Time := End_Of_MC_Slot);
 
    --  TT works use this procedure to wait for their next assigned slot
    --  The When_Was_Released result informs caller of slot starting time
@@ -119,13 +123,15 @@ package XAda.Dispatching.TTS is
    function Get_Current_Slot return Any_Time_Slot;
 
 private
+   End_Of_MC_Slot : constant Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
    protected Time_Triggered_Scheduler
      with Priority => System.Interrupt_Priority'Last is
 
       --  Setting a new TT plan
       procedure Set_Plan
-        (TTP : Time_Triggered_Plan_Access);
+        (TTP : Time_Triggered_Plan_Access;
+         At_Time : Ada.Real_Time.Time);
 
       --  Prepare work to wait for next activation
       procedure Prepare_For_Activation
@@ -210,6 +216,9 @@ private
 
       --  Hold time for a work slot
       Hold_Release       : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
+
+      --  Mode change next release
+      Next_Mode_Release  : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
       --  Start time of the current plan
       Plan_Start_Pending : Boolean := True;
