@@ -43,7 +43,7 @@ package body XAda.Dispatching.TTS is
       Work_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlying thread id
       Last_Release    : Time      := Time_Last; -- Time of last release
       
-      -- Overrun managment
+      -- Overrun management
       Event           : Overrun_Event;
       Overrun_Handler : Timing_Event_Handler := null; --  Overrun handler
    end record;
@@ -591,7 +591,12 @@ package body XAda.Dispatching.TTS is
               Current_Work_Slot.Padding_Duration;
             
             --  Check what needs be done to the TT task of the new slot
-            if Current_WCB.Has_Completed then
+            if End_Of_Work_Release = Now then
+               --  Current work slot has reported a null work duration,
+               --   so the slot has to be skipped
+               null;
+            
+            elsif Current_WCB.Has_Completed then
 
                --  The TT task has abandoned the TT level or has called
                --    Wait_For_Activation
