@@ -287,7 +287,7 @@ package body XAda.Dispatching.TTS is
 
          WCB (Current_Work_Slot.Work_Id).Is_Sliced := True;
          
-         if Current_Work_Slot.Padding > Time_Span_Zero then
+         if Current_Work_Slot.Padding_Duration > Time_Span_Zero then
             End_Of_Work_Event.Cancel_Handler (Cancelled);
             Hold_Event.Set_Handler (Hold_Release - Overhead,
                                     Hold_Handler_Access);
@@ -516,12 +516,15 @@ package body XAda.Dispatching.TTS is
 
             if Next_Plan /= null then
                --  There's a pending plan change.
-               --   It takes effect at the end of the MC slot
                if Next_Mode_Release = End_Of_MC_Slot then 
+                  --  It takes effect at the end of the MC slot
                   Change_Plan (Next_Slot_Release);
                elsif Next_Mode_Release <= Now then
+                  --  It takes effect right now
                   Change_Plan (Now);
                elsif Next_Mode_Release <= Next_Slot_Release then
+                  --  It takes effect as scheduled, but before the end of 
+                  --   this slot
                   Change_Plan (Next_Mode_Release);
                else
                   --  Mode change request remains pending
@@ -557,7 +560,8 @@ package body XAda.Dispatching.TTS is
             
             -- This value can be used within the Hold_Handler
             End_Of_Work_Release := Now + Current_Work_Slot.Work_Duration;
-            Hold_Release := End_Of_Work_Release - Current_Work_Slot.Padding;
+            Hold_Release := End_Of_Work_Release - 
+              Current_Work_Slot.Padding_Duration;
             
             --  Check what needs be done to the TT task of the new slot
             if Current_WCB.Has_Completed then
@@ -581,7 +585,7 @@ package body XAda.Dispatching.TTS is
                   Set_True (Release_Point (Current_Work_Slot.Work_Id));
                      
                   if Current_Work_Slot.Is_Continuation and then
-                    Current_Work_Slot.Padding > Time_Span_Zero then
+                    Current_Work_Slot.Padding_Duration > Time_Span_Zero then
                      Scheduling_Point := Hold_Point;
                   else                     
                      Scheduling_Point := End_Of_Work_Point;
@@ -614,7 +618,7 @@ package body XAda.Dispatching.TTS is
                Continue (Current_Thread_Id);
 
                if Current_Work_Slot.Is_Continuation and then
-                 Current_Work_Slot.Padding > Time_Span_Zero then
+                 Current_Work_Slot.Padding_Duration > Time_Span_Zero then
                   Scheduling_Point := Hold_Point;
                else                     
                   Scheduling_Point := End_Of_Work_Point;
@@ -688,7 +692,7 @@ package body XAda.Dispatching.TTS is
                --  Check whether the task is running sliced or this is
                --  a real overrun situation
                if Current_WCB.Is_Sliced then
-                  if Current_Work_Slot.Padding > Time_Span_Zero then
+                  if Current_Work_Slot.Padding_Duration > Time_Span_Zero then
                      if Current_Thread_Id.Hold_Signaled then
                         raise Program_Error
                           with ("Overrun in PA of Sliced TT task " &

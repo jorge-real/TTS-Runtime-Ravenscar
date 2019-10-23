@@ -58,17 +58,23 @@ package XAda.Dispatching.TTS is
       end record;
    type Any_Sync_Slot is access all Sync_Slot'Class;
 
+   --  To represent the whole duration of the slot
+   Full_Slot_Size : constant Ada.Real_Time.Time_Span;
+
    -- A work slot
    type Work_Slot is abstract new Time_Slot with
       record
          Work_Id         : TT_Work_Id;
          Work_Size       : Ada.Real_Time.Time_Span;
+         Padding_Size    : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
          Is_Continuation : Boolean := False;
-         Padding         : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
       end record;
 
    function Work_Duration (S: in Work_Slot)
      return Ada.Real_Time.Time_Span is (S.Work_Size);
+
+   function Padding_Duration (S: in Work_Slot)
+     return Ada.Real_Time.Time_Span is (S.Padding_Size);
 
    type Any_Work_Slot is access all Work_Slot'Class;
 
@@ -123,6 +129,7 @@ package XAda.Dispatching.TTS is
    function Get_Current_Slot return Any_Time_Slot;
 
 private
+   Full_Slot_Size : constant Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Last;
    End_Of_MC_Slot : constant Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
    protected Time_Triggered_Scheduler

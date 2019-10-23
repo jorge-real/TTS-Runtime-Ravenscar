@@ -26,11 +26,12 @@ package TT_Utilities is
    function TT_Slot (Kind          : Slot_Type;
                      Slot_Duration : Time_Span;
                      Slot_Id       : Positive  := Positive'Last;
+                     Work_Duration : Time_Span := TTS.Full_Slot_Size;
                      Padding       : Time_Span := Time_Span_Zero)
                      return TTS.Any_Time_Slot
    --  Make sure the Slot_Duration is non-negative and
    --  the value of Slot_Id is consistent with the kind of slot
-     with Pre => ( To_Duration (Slot_Duration) >= 0.0 and then
+     with Pre => ( Slot_Duration >= Time_Span_Zero and then
                    ( case Kind is
                      when Empty..Mode_Change =>
                        (Slot_Id = Positive'Last),
@@ -49,6 +50,20 @@ package TT_Utilities is
                           Kind          : Slot_Type;
                           Slot_Duration : Time_Span;
                           Slot_Id       : Positive := Positive'Last;
-                          Padding       : Time_Span := Time_Span_Zero);
+                          Work_Duration : Time_Span := TTS.Full_Slot_Size;
+                          Padding       : Time_Span := Time_Span_Zero)
+     --  Make sure the Slot_Duration is non-negative and
+     --  the value of Slot_Id is consistent with the kind of slot
+     with Pre => ( Slot_Duration >= Time_Span_Zero and then
+                   ( case Kind is
+                     when Empty..Mode_Change =>
+                       (Slot_Id = Positive'Last),
+                     when Regular..Optional_Continuation =>
+                       (Slot_Id >= Positive (TTS.TT_Work_Id'First) and
+                        Slot_Id <= Positive (TTS.TT_Work_Id'Last)),
+                     when Sync =>
+                       (Slot_Id >= Positive (TTS.TT_Sync_Id'First) and
+                        Slot_Id <= Positive (TTS.TT_Sync_Id'Last)) ) );
+
 
 end TT_Utilities;
