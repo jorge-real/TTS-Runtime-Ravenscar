@@ -42,7 +42,12 @@ package body XAda.Dispatching.TTS is
       Is_Sliced       : Boolean   := False;    --  Task is in a sliced sequence
       Work_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlying thread id
       Last_Release    : Time      := Time_Last; -- Time of last release
+      
+      -- Overrun managment
+      Event           : Overrun_Event;
+      Overrun_Handler : Timing_Event_Handler := null; --  Overrun handler
    end record;
+   type Work_Control_Block_Access is access all Work_Control_Block;
 
    --  Array of Work_Control_Blocks
    WCB : array (TT_Work_Id) of aliased Work_Control_Block;
@@ -158,6 +163,17 @@ package body XAda.Dispatching.TTS is
    begin
       return Time_Triggered_Scheduler.Get_Current_Slot;
    end Get_Current_Slot;
+   
+   -------------------------
+   -- Set_Overrun_Handler --
+   -------------------------
+   
+   procedure Set_Overrun_Handler
+     (Work_Id : TT_Work_Id;
+      Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler) is
+   begin
+      Time_Triggered_Scheduler.Set_Overrun_Handler(Work_Id, Handler);
+   end Set_Overrun_Handler;
    
    ------------------------------
    -- Time_Triggered_Scheduler --
@@ -423,6 +439,17 @@ package body XAda.Dispatching.TTS is
                     null);
       end Get_Current_Slot;      
       
+      -------------------------
+      -- Set_Overrun_Handler --
+      -------------------------
+      
+      procedure Set_Overrun_Handler
+        (Work_Id : TT_Work_Id;
+         Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler) is
+      begin
+         WCB (Work_Id).Overrun_Handler := Handler;           
+      end Set_Overrun_Handler;     
+      
       ------------------
       -- Hold_Handler --
       ------------------
@@ -432,7 +459,7 @@ package body XAda.Dispatching.TTS is
          Current_Slot      : constant Any_Time_Slot :=
            Current_Plan (Current_Slot_Index);
          Current_Work_Slot : Any_Work_Slot;
-         Current_WCB       : Work_Control_Block;
+         Current_WCB       : Work_Control_Block_Access;
          Current_Thread_Id : Thread_Id;
       begin
          if Current_Slot.all not in Work_Slot'Class then
@@ -442,7 +469,7 @@ package body XAda.Dispatching.TTS is
 
          Current_Work_Slot := Any_Work_Slot (Current_Slot);
          
-         Current_WCB := WCB (Current_Work_Slot.Work_Id);
+         Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
          Current_Thread_Id := Current_WCB.Work_Thread_Id;
          
          --  TODO: Check if this condition is required
@@ -465,7 +492,7 @@ package body XAda.Dispatching.TTS is
          pragma Unreferenced (Event);
          Current_Slot      : Any_Time_Slot;
          Current_Work_Slot : Any_Work_Slot;
-         Current_WCB       : Work_Control_Block;
+         Current_WCB       : Work_Control_Block_Access;
          Current_Sync_Slot : Any_Sync_Slot;
          Current_Thread_Id : Thread_Id;
          Scheduling_Point  : Scheduling_Point_Type;
@@ -555,7 +582,7 @@ package body XAda.Dispatching.TTS is
             -----------------------------
 
             Current_Work_Slot := Any_Work_Slot (Current_Slot);
-            Current_WCB := WCB (Current_Work_Slot.Work_Id);
+            Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
             Current_Thread_Id := Current_WCB.Work_Thread_Id;
             
             -- This value can be used within the Hold_Handler
@@ -579,9 +606,9 @@ package body XAda.Dispatching.TTS is
                   --  TT task is waiting in Wait_For_Activation
                   
                   --  Update WCB and release TT task
-                  WCB (Current_Work_Slot.Work_Id).Last_Release := Now;
-                  WCB (Current_Work_Slot.Work_Id).Has_Completed := False;
-                  WCB (Current_Work_Slot.Work_Id).Is_Waiting := False;
+                  Current_WCB.Last_Release := Now;
+                  Current_WCB.Has_Completed := False;
+                  Current_WCB.Is_Waiting := False;
                   Set_True (Release_Point (Current_Work_Slot.Work_Id));
                      
                   if Current_Work_Slot.Is_Continuation and then
@@ -658,7 +685,7 @@ package body XAda.Dispatching.TTS is
       procedure End_Of_Work_Handler (Event : in out Timing_Event) is
          Current_Slot      : Any_Time_Slot;
          Current_Work_Slot : Any_Work_Slot;
-         Current_WCB       : Work_Control_Block;
+         Current_WCB       : Work_Control_Block_Access;
          Current_Thread_Id : Thread_Id;
          Now               : Time;
       begin
@@ -682,7 +709,7 @@ package body XAda.Dispatching.TTS is
          if Current_Slot.all in Work_Slot'Class then
 
             Current_Work_Slot := Any_Work_Slot (Current_Slot);
-            Current_WCB := WCB (Current_Work_Slot.Work_Id);
+            Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
 
             if not Current_WCB.Has_Completed then
                --  Possible overrun detected, unless task is running sliced.
@@ -719,10 +746,18 @@ package body XAda.Dispatching.TTS is
                   --  Context switch occurs after executing this handler
 
                else
-                  --  Overrun detected, raise Program_Error
-                  raise Program_Error 
-                    with ("Overrun in TT task " &
-                            Current_Work_Slot.Work_Id'Image);
+                  --  Overrun detected
+                  if Current_WCB.Overrun_Handler /= null then
+                     Current_WCB.Event.Slot := Current_Work_Slot;
+                       
+                     -- Executes the Overrun handler as soon as possible
+                     Current_WCB.Event.Set_Handler(Now, Current_WCB.Overrun_Handler);
+                  else 
+                     -- raise Program_Error
+                     raise Program_Error 
+                       with ("Overrun in TT task " &
+                               Current_Work_Slot.Work_Id'Image);
+                  end if;
                end if;
                
             end if;            

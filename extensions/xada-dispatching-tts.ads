@@ -15,7 +15,7 @@
 pragma Profile (Ravenscar);
 
 with Ada.Real_Time, System;
-private with Ada.Real_Time.Timing_Events;
+with Ada.Real_Time.Timing_Events;
 
 generic
 
@@ -25,6 +25,10 @@ generic
 
 package XAda.Dispatching.TTS is
 
+   ---------------------
+   --  Slot id types  --
+   ---------------------
+
    --  TT tasks use a Work_Id of this type to identify themselves
    --  when they call the scheduler
    type TT_Work_Id is new Positive range 1 .. Number_Of_Work_IDs;
@@ -32,6 +36,10 @@ package XAda.Dispatching.TTS is
    --  ET tasks use a Sync_Id of this type to identify themselves
    --  when they call the scheduler
    type TT_Sync_Id is new Positive range 1 .. Number_Of_Sync_IDs;
+
+   ------------------
+   --  Slot types  --
+   ------------------
 
    --  An abstract time slot in the TT plan
    type Time_Slot is abstract tagged record
@@ -86,9 +94,26 @@ package XAda.Dispatching.TTS is
    type Optional_Slot is new Work_Slot with null record;
    type Any_Optional_Slot is access all Optional_Slot'Class;
 
+   -------------------
+   --  Event types  --
+   -------------------
+
+   type Overrun_Event is new Ada.Real_Time.Timing_Events.Timing_Event with
+      record
+         Slot : Any_Work_Slot;
+      end record;
+
+   ---------------------
+   --  TT Plan types  --
+   ---------------------
+
    --  Types representing/accessing TT plans
    type Time_Triggered_Plan        is array (Natural range <>) of Any_Time_Slot;
    type Time_Triggered_Plan_Access is access all Time_Triggered_Plan;
+
+   ------------------------------
+   --  TT Scheduler interface  --
+   ------------------------------
 
    --  To represent the end of a mode change slot
    End_Of_MC_Slot : constant Ada.Real_Time.Time;
@@ -125,8 +150,13 @@ package XAda.Dispatching.TTS is
      (Sync_Id           : TT_Sync_Id;
       When_Was_Released : out Ada.Real_Time.Time);
 
-   -- Returns current slot
+   --  Returns current slot
    function Get_Current_Slot return Any_Time_Slot;
+
+   --  Sets the overrun handler for a given Work_Id
+   procedure Set_Overrun_Handler
+     (Work_Id : TT_Work_Id;
+      Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
 
 private
    Full_Slot_Size : constant Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Last;
@@ -162,6 +192,11 @@ private
 
       -- Returns current slot
       function Get_Current_Slot return Any_Time_Slot;
+
+      --  Sets the overrun handler for a given Work_Id
+      procedure Set_Overrun_Handler
+        (Work_Id : TT_Work_Id;
+         Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
 
    private
       --  New slot timing event
