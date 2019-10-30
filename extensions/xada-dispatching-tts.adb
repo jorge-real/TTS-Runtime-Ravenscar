@@ -19,8 +19,10 @@ with Ada.Real_Time;                use Ada.Real_Time;
 with Ada.Real_Time.Timing_Events;  use Ada.Real_Time.Timing_Events;
 
 with Ada.Text_IO; use Ada.Text_IO;
+with Ada.Tags; use Ada.Tags;
 
 with System.BB.Threads; use System.BB.Threads;
+with System.Tasking; use System.Tasking;
 with System.TTS_Support; use System.TTS_Support;
 
 package body XAda.Dispatching.TTS is
@@ -43,9 +45,13 @@ package body XAda.Dispatching.TTS is
       Work_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlying thread id
       Last_Release    : Time      := Time_Last; -- Time of last release
       
-      -- Overrun management
+      --  Overrun management
       Event           : Overrun_Event;
       Overrun_Handler : Timing_Event_Handler := null; --  Overrun handler
+      
+      --  Activable Work ID
+      Is_Active              : Boolean := True;
+      Next_Activation_Status : Boolean := True;  
    end record;
    type Work_Control_Block_Access is access all Work_Control_Block;
 
@@ -67,12 +73,38 @@ package body XAda.Dispatching.TTS is
    --  Array of suspension objects for ET tasks to wait for synchronization
    Sync_Point : array (TT_Sync_Id) of Suspension_Object;
 
+   -----------------------
+   --  Deferred events  --
+   -----------------------
+   
+   type Command_Event is new Ada.Real_Time.Timing_Events.Timing_Event with
+     null record;
+   type Any_Command_Event is access all Command_Event'Class;
+   
+   type Set_Work_Active_Status_Event is new Command_Event with
+      record
+         Work_Id : TT_Work_Id;
+         Active  : Boolean;
+      end record;
+     
+   -------------------------
+   -- In_Protected_Action --
+   -------------------------
+   
+   function In_Protected_Action 
+     (T : Thread_Id := Thread_Self) return Boolean is
+      T_Id : constant System.Tasking.Task_Id := To_Task_Id (T.ATCB);
+   begin
+      return (T_Id.Common.Protected_Action_Nesting > 0);
+   end In_Protected_Action;  
+   
    ----------------
    --  Set_Plan  --
    ----------------
 
-   procedure Set_Plan (TTP : Time_Triggered_Plan_Access;
-                       At_Time : Time := End_Of_MC_Slot) is
+   procedure Set_Plan 
+     (TTP : Time_Triggered_Plan_Access;
+      At_Time : Time := End_Of_MC_Slot) is
    begin
       Time_Triggered_Scheduler.Set_Plan (TTP, At_Time);
    end Set_Plan;
@@ -175,6 +207,17 @@ package body XAda.Dispatching.TTS is
       Time_Triggered_Scheduler.Set_Overrun_Handler(Work_Id, Handler);
    end Set_Overrun_Handler;
    
+   ----------------------------
+   -- Set_Work_Active_Status --
+   ----------------------------
+   
+   procedure Set_Work_Active_Status
+     (Work_Id : TT_Work_Id;
+      Active  : Boolean) is 
+   begin
+      Time_Triggered_Scheduler.Set_Work_Active_Status(Work_Id, Active);
+   end Set_Work_Active_Status;
+      
    ------------------------------
    -- Time_Triggered_Scheduler --
    ------------------------------
@@ -261,6 +304,8 @@ package body XAda.Dispatching.TTS is
                --  then the slot is considered completed. 
                if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id = Thread_Self then
                   WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
+                  WCB (Current_Work_Slot.Work_Id).Is_Active := 
+                    WCB (Current_Work_Slot.Work_Id).Next_Activation_Status;
                end if;
             end if;
          end if;
@@ -339,6 +384,9 @@ package body XAda.Dispatching.TTS is
          end if;
 
          WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
+         WCB (Current_Work_Slot.Work_Id).Is_Active := 
+           WCB (Current_Work_Slot.Work_Id).Next_Activation_Status;
+
          --  Cancel the Hold and End of Work handlers, if required
          Hold_Event.Cancel_Handler (Cancelled);
          End_Of_Work_Event.Cancel_Handler (Cancelled);
@@ -419,6 +467,8 @@ package body XAda.Dispatching.TTS is
                --  then the slot is considered completed. 
                if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id = Thread_Self then
                   WCB (Current_Work_Slot.Work_Id).Has_Completed := True;
+                  WCB (Current_Work_Slot.Work_Id).Is_Active := 
+                    WCB (Current_Work_Slot.Work_Id).Next_Activation_Status;
                end if;
             end if;
          end if;
@@ -449,6 +499,36 @@ package body XAda.Dispatching.TTS is
       begin
          WCB (Work_Id).Overrun_Handler := Handler;           
       end Set_Overrun_Handler;     
+   
+      ----------------------------
+      -- Set_Work_Active_Status --
+      ----------------------------
+   
+      procedure Set_Work_Active_Status
+        (Work_Id : TT_Work_Id;
+         Active  : Boolean) is 
+      begin
+         WCB (Work_Id).Next_Activation_Status := Active;
+
+         if WCB (Work_Id).Has_Completed then
+            WCB (Work_Id).Is_Active := Active;
+         end if;
+      end Set_Work_Active_Status;
+      
+      --------------------------
+      -- Send_Command_Request --
+      --------------------------
+      
+      procedure Send_Command_Request
+        (Event   : Any_Command_Event;
+         At_Time : Ada.Real_Time.Time) is
+      begin
+         if Event'Tag = Set_Work_Active_Status_Event'Tag then
+            null;
+         else
+            raise Program_Error with "Illegal command request";
+         end if;
+      end Send_Command_Request;        
       
       ------------------
       -- Hold_Handler --
@@ -536,7 +616,14 @@ package body XAda.Dispatching.TTS is
          --  Default scheduling point
          Scheduling_Point := Next_Slot_Point;
 
-         if Current_Slot.all in Mode_Change_Slot'Class then
+         if Current_Slot.all in Empty_Slot'Class then
+            -----------------------------
+            --  Process an Empty_Slot  --
+            -----------------------------
+            
+            null;
+            
+         elsif Current_Slot.all in Mode_Change_Slot'Class then
             ----------------------------------
             --  Process a Mode_Change_Slot  --
             ----------------------------------
@@ -559,13 +646,6 @@ package body XAda.Dispatching.TTS is
                end if;
             end if;
 
-         elsif Current_Slot.all in Empty_Slot'Class then
-            -----------------------------
-            --  Process an Empty_Slot  --
-            -----------------------------
-            
-            null;
-            
          elsif Current_Slot.all in Sync_Slot'Class then
             ----------------------------
             --  Process a Sync_Slot   --
@@ -585,37 +665,72 @@ package body XAda.Dispatching.TTS is
             Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
             Current_Thread_Id := Current_WCB.Work_Thread_Id;
             
-            -- This value can be used within the Hold_Handler
-            End_Of_Work_Release := Now + Current_Work_Slot.Work_Duration;
-            Hold_Release := End_Of_Work_Release - 
-              Current_Work_Slot.Padding_Duration;
+            if Current_WCB.Is_Active then
+               
+               -- This value can be used within the Hold_Handler
+               End_Of_Work_Release := Now + Current_Work_Slot.Work_Duration;
+               Hold_Release := End_Of_Work_Release - 
+                 Current_Work_Slot.Padding_Duration;
             
-            --  Check what needs be done to the TT task of the new slot
-            if End_Of_Work_Release = Now then
-               --  Current work slot has reported a null work duration,
-               --   so the slot has to be skipped
-               null;
-            
-            elsif Current_WCB.Has_Completed then
-
-               --  The TT task has abandoned the TT level or has called
-               --    Wait_For_Activation
-
-               if Current_WCB.Is_Sliced then
-                  --  The completed TT task was running sliced and it has
-                  --   completed, so this slot is not needed by the task.
-
+               --  Check what needs be done to the TT task of the new slot
+               if End_Of_Work_Release = Now then
+                  --  Current work slot has reported a null work duration,
+                  --   so the slot has to be skipped
                   null;
+            
+               elsif Current_WCB.Has_Completed then
+
+                  --  The TT task has abandoned the TT level or has called
+                  --    Wait_For_Activation
+
+                  if Current_WCB.Is_Sliced then
+                     --  The completed TT task was running sliced and it has
+                     --   completed, so this slot is not needed by the task.
+
+                     null;
                   
-               elsif Current_WCB.Is_Waiting then
-                  --  TT task is waiting in Wait_For_Activation
+                  elsif Current_WCB.Is_Waiting then
+                     --  TT task is waiting in Wait_For_Activation
                   
-                  --  Update WCB and release TT task
-                  Current_WCB.Last_Release := Now;
-                  Current_WCB.Has_Completed := False;
-                  Current_WCB.Is_Waiting := False;
-                  Set_True (Release_Point (Current_Work_Slot.Work_Id));
+                     --  Update WCB and release TT task
+                     Current_WCB.Last_Release := Now;
+                     Current_WCB.Has_Completed := False;
+                     Current_WCB.Is_Waiting := False;
+                     Set_True (Release_Point (Current_Work_Slot.Work_Id));
                      
+                     if Current_Work_Slot.Is_Continuation and then
+                       Current_Work_Slot.Padding_Duration > Time_Span_Zero then
+                        Scheduling_Point := Hold_Point;
+                     else                     
+                        Scheduling_Point := End_Of_Work_Point;
+                     end if;         
+                     
+                  elsif Current_Work_Slot.all in Optional_Slot'Class then
+                     --  If the slot is optional, it is not an error if the TT
+                     --    task has not invoked Wait_For_Activation
+                  
+                     null;                  
+                  else
+                     --  Task is not waiting for its next activation.
+                     --  It must have abandoned the TT Level or it is waiting in
+                     --   a different work slot
+                     raise Program_Error
+                       with ("Task is late to next activation for Work_Id " &
+                               Current_Work_Slot.Work_Id'Image);
+                  end if;
+
+               else
+                  --  The TT task has not completed and no overrun has been
+                  --    detected so far, so it must be running sliced and is
+                  --    currently held from a previous exhausted slot, so it
+                  --    must be resumed
+                  pragma Assert (Current_WCB.Is_Sliced);
+
+                  --  Change thread state to runnable and insert it at the tail
+                  --    of its active priority, which here implies that the
+                  --    thread will be the next to execute
+                  Continue (Current_Thread_Id);
+
                   if Current_Work_Slot.Is_Continuation and then
                     Current_Work_Slot.Padding_Duration > Time_Span_Zero then
                      Scheduling_Point := Hold_Point;
@@ -623,46 +738,20 @@ package body XAda.Dispatching.TTS is
                      Scheduling_Point := End_Of_Work_Point;
                   end if;                        
 
-               elsif Current_Work_Slot.all in Optional_Slot'Class then
-                  --  If the slot is optional, it is not an error if the TT
-                  --    task has not invoked Wait_For_Activation
-                  
-                  null;                  
-               else
-                  --  Task is not waiting for its next activation.
-                  --  It must have abandoned the TT Level or it is waiting in
-                  --   a different work slot
-                  raise Program_Error
-                    with ("Task is late to next activation for Work_Id " &
-                            Current_Work_Slot.Work_Id'Image);
                end if;
 
-            else
-               --  The TT task has not completed and no overrun has been
-               --    detected so far, so it must be running sliced and is
-               --    currently held from a previous exhausted slot, so it
-               --    must be resumed
-               pragma Assert (Current_WCB.Is_Sliced);
-
-               --  Change thread state to runnable and insert it at the tail
-               --    of its active priority, which here implies that the
-               --    thread will be the next to execute
-               Continue (Current_Thread_Id);
-
-               if Current_Work_Slot.Is_Continuation and then
-                 Current_Work_Slot.Padding_Duration > Time_Span_Zero then
-                  Scheduling_Point := Hold_Point;
-               else                     
-                  Scheduling_Point := End_Of_Work_Point;
-               end if;                        
-
             end if;
-
+            
+            ---------------------------------------------
             --  Common actions to process the new slot --
+            ---------------------------------------------
+            
             --  The work inherits its Is_Sliced condition from the
-            --  Is_Continuation property of the new slot
+            --   Is_Continuation property of the new slot
+            --  This ensures that if the Work ID is not active at the beginning 
+            --   of an sliced sequence, the sequence is ignored completely
             WCB (Current_Work_Slot.Work_Id).Is_Sliced :=
-              Current_Work_Slot.Is_Continuation;
+              Current_Work_Slot.Is_Continuation;              
             
          end if;
 

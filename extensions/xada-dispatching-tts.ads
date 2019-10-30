@@ -158,6 +158,12 @@ package XAda.Dispatching.TTS is
      (Work_Id : TT_Work_Id;
       Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
 
+   --  Sets if a given Work Id is active or not. Deactivation can be postponed
+   --   until the work is completed
+   procedure Set_Work_Active_Status
+     (Work_Id : TT_Work_Id;
+      Active  : Boolean);
+
 private
    Full_Slot_Size : constant Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Last;
    End_Of_MC_Slot : constant Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
@@ -197,6 +203,11 @@ private
       procedure Set_Overrun_Handler
         (Work_Id : TT_Work_Id;
          Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
+
+      --  Sets if a given Work Id is active or not
+      procedure Set_Work_Active_Status
+        (Work_Id : TT_Work_Id;
+         Active  : Boolean);
 
    private
       --  New slot timing event
