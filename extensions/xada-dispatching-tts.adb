@@ -58,7 +58,7 @@ package body XAda.Dispatching.TTS is
    --  Run time TT sync info
    type Sync_Control_Block is record
       Sync_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlying thread id
-      Last_Release    : Time      := Time_Last; -- Time of last release
+      Last_Release    : Time      := Time_Last;  -- Time of last release
    end record;
 
    --  Array of Work_Control_Blocks
