@@ -13,6 +13,8 @@ package TT_Utilities is
    type Slot_Type is (Empty,
                       Mode_Change,
                       Regular,
+                      Initial,
+                      Final,
                       Terminal,
                       Continuation,
                       Optional,
@@ -27,7 +29,9 @@ package TT_Utilities is
                      Slot_Duration : Time_Span;
                      Slot_Id       : Positive  := Positive'Last;
                      Work_Duration : Time_Span := TTS.Full_Slot_Size;
-                     Padding       : Time_Span := Time_Span_Zero)
+                     Padding       : Time_Span := Time_Span_Zero;
+                     Is_Initial    : Boolean := False;
+                     Is_Final      : Boolean := False)
                      return TTS.Any_Time_Slot
    --  Make sure the Slot_Duration is non-negative and
    --  the value of Slot_Id is consistent with the kind of slot
@@ -51,7 +55,9 @@ package TT_Utilities is
                           Slot_Duration : Time_Span;
                           Slot_Id       : Positive := Positive'Last;
                           Work_Duration : Time_Span := TTS.Full_Slot_Size;
-                          Padding       : Time_Span := Time_Span_Zero)
+                          Padding       : Time_Span := Time_Span_Zero;
+                          Is_Initial    : Boolean := False;
+                          Is_Final      : Boolean := False)
      --  Make sure the Slot_Duration is non-negative and
      --  the value of Slot_Id is consistent with the kind of slot
      with Pre => ( Slot_Duration >= Time_Span_Zero and then

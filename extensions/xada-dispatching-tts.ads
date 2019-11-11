@@ -76,6 +76,10 @@ package XAda.Dispatching.TTS is
          Work_Size       : Ada.Real_Time.Time_Span;
          Padding_Size    : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
          Is_Continuation : Boolean := False;
+
+         -- Indicate if this slot is the first or last slot of a given job
+         Is_Initial      : Boolean := True;
+         Is_Final        : Boolean := True;
       end record;
 
    function Work_Duration (S: in Work_Slot)
