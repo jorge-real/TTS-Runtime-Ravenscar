@@ -180,6 +180,11 @@ package body System.BB.Threads is
 
       Id.Hold_Signaled := False;
 
+      --  No Timing Events Pending
+
+      Id.Timing_Events_Pending := False;
+      Id.Timing_Events_Triggered := System.BB.Time.Time'Last;
+
       --  Initialize alarm status
 
       Id.Alarm_Time := System.BB.Time.Time'Last;

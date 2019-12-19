@@ -137,6 +137,13 @@ package System.BB.Threads is
       --  Variable which reflects whether a Hold action has been performed
       --  on the thread while it was in a protected action.
 
+      Timing_Events_Pending : Boolean;
+      --  Variable which reflects whether the execution of TE has been delayed
+      --  since this thread was in a protected action.
+
+      Timing_Events_Triggered : System.BB.Time.Time;
+      --  When the TE were trigerred
+
       Global_List : Thread_Id;
       --  Next thread in the global list. The queue is ordered by creation
       --  time. The first place is occupied by the environment thread, and

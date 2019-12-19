@@ -30,9 +30,9 @@ for i in $FILES
 do
     b=$(basename $i)
 
-    if [ ! -f $b ] ; then
-	continue
-    fi
+#    if [ ! -f $b ] ; then
+#	continue
+#    fi
     
     f=${SRCDIR}/$i
     if [ -f $f ] ; then

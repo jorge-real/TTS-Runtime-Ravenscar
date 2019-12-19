@@ -37,6 +37,7 @@ with System.Task_Primitives.Operations;
 --           Self
 
 with System.BB.Threads;
+with System.BB.Timing_Events;
 with System.TTS_Support;
 
 package body System.Tasking.Protected_Objects is
@@ -45,6 +46,7 @@ package body System.Tasking.Protected_Objects is
    use System.Multiprocessors;
    use System.BB.Threads;
    use System.TTS_Support;
+   use System.BB.Timing_Events;
 
    Multiprocessor : constant Boolean := CPU'Range_Length /= 1;
    --  Set true if on multiprocessor (more than one CPU)
@@ -168,6 +170,13 @@ package body System.Tasking.Protected_Objects is
          --  Only for multiprocessor
 
          Multiprocessors.Fair_Locks.Unlock (Object.Lock);
+      end if;
+
+      if T_Id.Timing_Events_Pending and then
+        Self_Id.Common.Protected_Action_Nesting = 0
+      then
+         Execute_Expired_Timing_Events (T_Id.Timing_Events_Triggered);
+         T_Id.Timing_Events_Pending := False;
       end if;
 
       if T_Id.Hold_Signaled and then
