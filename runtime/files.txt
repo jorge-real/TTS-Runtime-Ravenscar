@@ -5,3 +5,4 @@ gnarl/common/s-taprob.adb
 gnarl/full/s-taskin.ads
 gnarl/full/extended/s-ttssup.adb
 gnarl/full/extended/s-ttssup.ads
+gnarl/timer32/s-bbtime.adb
