@@ -86,7 +86,9 @@ package body XAda.Dispatching.TTS is
          Work_Id : TT_Work_Id;
          Active  : Boolean;
       end record;
-     
+   
+   Set_Work_Active_Status_Request : Set_Work_Active_Status_Event;
+          
    -------------------------
    -- In_Protected_Action --
    -------------------------
@@ -106,7 +108,11 @@ package body XAda.Dispatching.TTS is
      (TTP : Time_Triggered_Plan_Access;
       At_Time : Time := End_Of_MC_Slot) is
    begin
-      Time_Triggered_Scheduler.Set_Plan (TTP, At_Time);
+      if In_Protected_Action then
+         null;
+      else 
+         Time_Triggered_Scheduler.Set_Plan (TTP, At_Time);
+      end if;
    end Set_Plan;
 
    --------------------------
@@ -521,11 +527,11 @@ package body XAda.Dispatching.TTS is
          WCB (Work_Id).Next_Activation_Status := Active;
       end Set_Work_Active_Status;
       
-      --------------------------
-      -- Send_Command_Request --
-      --------------------------
+      ---------------------
+      -- Command_Handler --
+      ---------------------
       
-      procedure Send_Command_Request
+      procedure Command_Handler
         (Event   : Any_Command_Event;
          At_Time : Ada.Real_Time.Time) is
       begin
@@ -688,6 +694,14 @@ package body XAda.Dispatching.TTS is
                   --  Current work slot has reported a null work duration,
                   --   so the slot has to be skipped
                   null;
+                  
+               elsif End_Of_Work_Release > Next_Slot_Release then
+                  
+                  raise Program_Error
+                    with ("Work duration is beyond slot duration for Work_Id " &
+                            Current_Work_Slot.Work_Id'Image & 
+                            " Slot Index " & 
+                            Current_Slot_Index'Image);
             
                elsif Current_WCB.Has_Completed then
 
