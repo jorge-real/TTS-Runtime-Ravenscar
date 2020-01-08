@@ -237,8 +237,21 @@ private
       --  This access object is the reason why the scheduler is declared
       --  in this private part, given that this is a generic package.
       --  It should be a constant, but a PO can't have constant components.
-      End_Of_Work_Access : Ada.Real_Time.Timing_Events.Timing_Event_Handler :=
+      End_Of_Work_Handler_Access : Ada.Real_Time.Timing_Events.Timing_Event_Handler :=
         End_Of_Work_Handler'Access;
+
+      --  Reschedule timing event
+      Reschedule_Event : Ada.Real_Time.Timing_Events.Timing_Event;
+
+      --  Reschedule handler procedure
+      procedure Reschedule_Handler
+        (Event : in out Ada.Real_Time.Timing_Events.Timing_Event);
+
+      --  This access object is the reason why the scheduler is declared
+      --  in this private part, given that this is a generic package.
+      --  It should be a constant, but a PO can't have constant components.
+      Reschedule_Handler_Access : Ada.Real_Time.Timing_Events.Timing_Event_Handler :=
+        Reschedule_Handler'Access;
 
       --  Hold timing event
       Hold_Event : Ada.Real_Time.Timing_Events.Timing_Event;

@@ -39,11 +39,12 @@ package body XAda.Dispatching.TTS is
    
    --  Run time TT work info
    type Work_Control_Block is record
-      Has_Completed   : Boolean   := True;     --  TT part has completed
-      Is_Waiting      : Boolean   := False;    --  Task is waiting for release
-      Is_Sliced       : Boolean   := False;    --  Task is in a sliced sequence
-      Work_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlying thread id
-      Last_Release    : Time      := Time_Last; -- Time of last release
+      Has_Completed     : Boolean   := True;     --  TT part has completed
+      Is_Waiting        : Boolean   := False;    --  Task is waiting for release
+      Is_Sliced         : Boolean   := False;    --  Task is in a sliced sequence
+      Work_Thread_Id    : Thread_Id := Null_Thread_Id;  --  Underlying thread id
+      Last_Release      : Time      := Time_Last; -- Time of last release
+      Last_Slot_Release : Time      := Time_Last; -- Time of last slot release
       
       --  Overrun management
       Event           : Overrun_Event;
@@ -245,7 +246,7 @@ package body XAda.Dispatching.TTS is
          if Next_Plan /= null then
             Next_Mode_Release := At_Time;              
             
-            --  Start new plan now if none is set. Otherwise, the scheduler will
+            --  Start new plan now if none is set. Otherwise, the scheduler will 
             --  change to the Next_Plan at the end of the next mode change slot
             if Current_Plan = null then
                
@@ -365,7 +366,7 @@ package body XAda.Dispatching.TTS is
                                     Hold_Handler_Access);
          else 
             End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
-                                           End_Of_Work_Access);            
+                                           End_Of_Work_Handler_Access);            
          end if;                        
          
       end Continue_Sliced;
@@ -541,8 +542,8 @@ package body XAda.Dispatching.TTS is
          else
             raise Program_Error with "Illegal command request";
          end if;
-      end Send_Command_Request;        
-      
+      end Command_Handler;        
+     
       ------------------
       -- Hold_Handler --
       ------------------
@@ -571,7 +572,7 @@ package body XAda.Dispatching.TTS is
 
             --  Set timing event for the next scheduling point
             End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
-                                           End_Of_Work_Access);
+                                           End_Of_Work_Handler_Access);
             --  Next_Slot handler will be set when this work was finished
          end if;
          
@@ -719,6 +720,7 @@ package body XAda.Dispatching.TTS is
                   
                      --  Update WCB and release TT task
                      Current_WCB.Last_Release := Now;
+                     Current_WCB.Last_Slot_Release := Now;
                      Current_WCB.Has_Completed := False;
                      Current_WCB.Is_Waiting := False;
                      Set_True (Release_Point (Current_Work_Slot.Work_Id));
@@ -750,7 +752,9 @@ package body XAda.Dispatching.TTS is
                   --    currently held from a previous exhausted slot, so it
                   --    must be resumed
                   pragma Assert (Current_WCB.Is_Sliced);
-
+                  
+                  Current_WCB.Last_Slot_Release := Now;                 
+                  
                   --  Change thread state to runnable and insert it at the tail
                   --    of its active priority, which here implies that the
                   --    thread will be the next to execute
@@ -787,7 +791,7 @@ package body XAda.Dispatching.TTS is
                                             Next_Slot_Handler_Access);               
             when End_Of_Work_Point =>
                End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
-                                              End_Of_Work_Access);
+                                              End_Of_Work_Handler_Access);
                --  Next_Slot handler will be set when this work finishes
             when Hold_Point =>
                Hold_Event.Set_Handler (Hold_Release - Overhead,
@@ -869,10 +873,16 @@ package body XAda.Dispatching.TTS is
                   if Current_WCB.Overrun_Handler /= null then
                      Current_WCB.Event.Slot := Current_Work_Slot;
                        
-                     -- Executes the Overrun handler as soon as possible
+                     --  Executes the Overrun handler as soon as possible
                      Current_WCB.Event.Set_Handler(Now, Current_WCB.Overrun_Handler);
+                     
+                     --  Program the Reschedule event to check if the 
+                     --   Work_Duration has changed after the handler execution
+                     --  ARM12 D.15 20/2 
+                     --   "If several timing events are set for the same time, 
+                     --    they are executed in FIFO order of being set."
+                     Reschedule_Event.Set_Handler(Now, Reschedule_Handler_Access);
                   else 
-                     -- raise Program_Error
                      raise Program_Error 
                        with ("Overrun in TT task " &
                                Current_Work_Slot.Work_Id'Image);
@@ -884,6 +894,47 @@ package body XAda.Dispatching.TTS is
          end if;
 
       end End_Of_Work_Handler;
+      
+      ------------------------
+      -- Reschedule_Handler --
+      ------------------------
+      
+      procedure Reschedule_Handler (Event : in out Timing_Event) is
+         pragma Unreferenced (Event);
+         Current_Slot      : constant Any_Time_Slot :=
+           Current_Plan (Current_Slot_Index);
+         Current_Work_Slot : Any_Work_Slot;
+         Current_WCB       : Work_Control_Block_Access;
+      begin
+         if Current_Slot.all not in Work_Slot'Class then
+            raise Program_Error
+              with ("Reschedule handler called for a non-TT task");
+         end if;
+
+         Current_Work_Slot := Any_Work_Slot (Current_Slot);         
+         Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
+         
+         if End_Of_Work_Release < Current_WCB.Last_Slot_Release + 
+           Current_Work_Slot.Work_Duration then 
+            --  Work duration has been increased, so reprogram the EoW event
+            End_Of_Work_Release := Current_WCB.Last_Slot_Release + 
+              Current_Work_Slot.Work_Duration;
+            
+            if End_Of_Work_Release > Next_Slot_Release then                  
+                  raise Program_Error
+                    with ("Work duration is beyond slot duration for Work_Id " &
+                            Current_Work_Slot.Work_Id'Image & 
+                            " Slot Index " & 
+                            Current_Slot_Index'Image);
+            end if;
+            
+            --  Reschedule event can only be emitted from an EoW handler
+            End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
+                                           End_Of_Work_Handler_Access);
+         end if;
+         
+      end Reschedule_Handler;
+        
 
    end Time_Triggered_Scheduler;
 
