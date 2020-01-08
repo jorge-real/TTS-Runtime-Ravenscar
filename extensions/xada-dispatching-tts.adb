@@ -21,9 +21,11 @@ with Ada.Real_Time.Timing_Events;  use Ada.Real_Time.Timing_Events;
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Tags; use Ada.Tags;
 
-with System.BB.Threads; use System.BB.Threads;
-with System.Tasking; use System.Tasking;
-with System.TTS_Support; use System.TTS_Support;
+pragma Warnings(Off);
+  with System.BB.Threads; use System.BB.Threads;
+  with System.Tasking; use System.Tasking;
+  with System.TTS_Support; use System.TTS_Support;
+pragma Warnings(On);
 
 package body XAda.Dispatching.TTS is
    
@@ -82,25 +84,6 @@ package body XAda.Dispatching.TTS is
      null record;
    type Any_Command_Event is access all Command_Event'Class;
    
-   type Set_Work_Active_Status_Event is new Command_Event with
-      record
-         Work_Id : TT_Work_Id;
-         Active  : Boolean;
-      end record;
-   
-   Set_Work_Active_Status_Request : Set_Work_Active_Status_Event;
-          
-   -------------------------
-   -- In_Protected_Action --
-   -------------------------
-   
-   function In_Protected_Action 
-     (T : Thread_Id := Thread_Self) return Boolean is
-      T_Id : constant System.Tasking.Task_Id := To_Task_Id (T.ATCB);
-   begin
-      return (T_Id.Common.Protected_Action_Nesting > 0);
-   end In_Protected_Action;  
-   
    ----------------
    --  Set_Plan  --
    ----------------
@@ -109,7 +92,7 @@ package body XAda.Dispatching.TTS is
      (TTP : Time_Triggered_Plan_Access;
       At_Time : Time := End_Of_MC_Slot) is
    begin
-      if In_Protected_Action then
+      if In_Protected_Action(Thread_Self) then
          null;
       else 
          Time_Triggered_Scheduler.Set_Plan (TTP, At_Time);
@@ -536,7 +519,7 @@ package body XAda.Dispatching.TTS is
         (Event   : Any_Command_Event;
          At_Time : Ada.Real_Time.Time) is
       begin
-         if Event'Tag = Set_Work_Active_Status_Event'Tag then
+         if Event'Tag = Command_Event'Tag then
             --  TODO
             null;
          else
@@ -931,10 +914,13 @@ package body XAda.Dispatching.TTS is
             --  Reschedule event can only be emitted from an EoW handler
             End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
                                            End_Of_Work_Handler_Access);
+         else
+            raise Program_Error 
+              with ("Overrun in TT task " &
+                      Current_Work_Slot.Work_Id'Image);
          end if;
          
-      end Reschedule_Handler;
-        
+      end Reschedule_Handler;        
 
    end Time_Triggered_Scheduler;
 

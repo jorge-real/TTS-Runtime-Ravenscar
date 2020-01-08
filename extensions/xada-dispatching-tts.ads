@@ -18,7 +18,7 @@ with Ada.Real_Time, System;
 with Ada.Real_Time.Timing_Events;
 
 generic
-
+   type Criticality_Levels is (<>);
    Number_Of_Work_IDs : Positive;
    Number_Of_Sync_IDs : Positive := 1;
    TT_Priority        : System.Priority := System.Priority'Last;
@@ -44,6 +44,7 @@ package XAda.Dispatching.TTS is
    --  An abstract time slot in the TT plan
    type Time_Slot is abstract tagged record
       Slot_Size : Ada.Real_Time.Time_Span;
+      Criticality_Level : Criticality_Levels := Criticality_Levels'First;
    end record;
 
    function Slot_Duration (S: in Time_Slot)
@@ -271,31 +272,34 @@ private
         (At_Time : Ada.Real_Time.Time);
 
       --  Currently running plan and next plan to switch to, if any
-      Current_Plan       : Time_Triggered_Plan_Access := null;
-      Next_Plan          : Time_Triggered_Plan_Access := null;
+      Current_Plan        : Time_Triggered_Plan_Access := null;
+      Next_Plan           : Time_Triggered_Plan_Access := null;
 
       --  Index numbers of current and next slots in the plan
-      Current_Slot_Index : Natural := 0;
-      Next_Slot_Index    : Natural := 0;
+      Current_Slot_Index  : Natural := 0;
+      Next_Slot_Index     : Natural := 0;
 
       --  Start time of next slot
-      Next_Slot_Release  : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
+      Next_Slot_Release   : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
       --  End of current work slot
       End_Of_Work_Release : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
       --  Hold time for a work slot
-      Hold_Release       : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
+      Hold_Release        : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
       --  Mode change next release
-      Next_Mode_Release  : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
+      Next_Mode_Release   : Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 
       --  Start time of the current plan
-      Plan_Start_Pending : Boolean := True;
-      First_Plan_Release : Ada.Real_Time.Time := Ada.Real_Time.Time_First;
+      Plan_Start_Pending  : Boolean := True;
+      First_Plan_Release  : Ada.Real_Time.Time := Ada.Real_Time.Time_First;
 
       --  Start time of the first slot
-      First_Slot_Release : Ada.Real_Time.Time := Ada.Real_Time.Time_First;
+      First_Slot_Release  : Ada.Real_Time.Time := Ada.Real_Time.Time_First;
+
+      --  Current Criticality Level
+      Criticality_Level   : Criticality_Levels := Criticality_Levels'First;
 
    end Time_Triggered_Scheduler;
 

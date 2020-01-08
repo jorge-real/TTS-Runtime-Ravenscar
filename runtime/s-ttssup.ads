@@ -8,6 +8,9 @@ package System.TTS_Support is
                    Check_Protected_Action : Boolean := False);
    procedure Continue (T : System.BB.Threads.Thread_Id);
    function Is_Held (T : System.BB.Threads.Thread_Id)
-                   return Boolean;
-
+		    return Boolean;
+   
+   function In_Protected_Action (T : Thread_Id; 
+				 Level : Natural := 0) 
+				return Boolean;   
 end System.TTS_Support;
