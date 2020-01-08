@@ -40,6 +40,8 @@ with System.BB.Threads;
 with System.BB.Timing_Events;
 with System.TTS_Support;
 
+with System.BB.Protection;
+
 package body System.Tasking.Protected_Objects is
 
    use System.Task_Primitives.Operations;
@@ -175,7 +177,9 @@ package body System.Tasking.Protected_Objects is
       if T_Id.Timing_Events_Pending and then
         Self_Id.Common.Protected_Action_Nesting = 0
       then
+         System.BB.Protection.Enter_Kernel;
          Execute_Expired_Timing_Events (T_Id.Timing_Events_Triggered);
+         System.BB.Protection.Leave_Kernel;
          T_Id.Timing_Events_Pending := False;
       end if;
 
