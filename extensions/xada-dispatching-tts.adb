@@ -54,7 +54,6 @@ package body XAda.Dispatching.TTS is
       
       --  Activable Work ID
       Is_Active              : Boolean := True;
-      Next_Activation_Status : Boolean := True;  
    end record;
    type Work_Control_Block_Access is access all Work_Control_Block;
 
@@ -299,7 +298,7 @@ package body XAda.Dispatching.TTS is
                   --  Update the active status if it is a final slot
                   if Any_Work_Slot (Current_Slot).Is_Final then
                      Current_WCB.Is_Active := 
-                       Current_WCB.Next_Activation_Status;
+                       (Current_Slot.Criticality_Level >= Current_Criticality_Level);
                   end if;
                end if;
             end if;
@@ -382,8 +381,8 @@ package body XAda.Dispatching.TTS is
 
          --  Update the active status if it is a final slot
          if Any_Work_Slot (Current_Slot).Is_Final then
-            Current_WCB.Is_Active := 
-              Current_WCB.Next_Activation_Status;
+            Current_WCB.Is_Active :=               
+              (Current_Slot.Criticality_Level >= Current_Criticality_Level);
          end if;
 
          --  Cancel the Hold and End of Work handlers, if required
@@ -467,8 +466,6 @@ package body XAda.Dispatching.TTS is
                --  then the slot is considered completed. 
                if Current_WCB.Work_Thread_Id = Thread_Self then
                   Current_WCB.Has_Completed := True;
-                  Current_WCB.Is_Active := 
-                    Current_WCB.Next_Activation_Status;
                end if;
             end if;
          end if;
@@ -500,17 +497,6 @@ package body XAda.Dispatching.TTS is
          WCB (Work_Id).Overrun_Handler := Handler;           
       end Set_Overrun_Handler;     
    
-      ----------------------------
-      -- Set_Work_Active_Status --
-      ----------------------------
-   
-      procedure Set_Work_Active_Status
-        (Work_Id : TT_Work_Id;
-         Active  : Boolean) is 
-      begin
-         WCB (Work_Id).Next_Activation_Status := Active;
-      end Set_Work_Active_Status;
-      
       ---------------------
       -- Command_Handler --
       ---------------------
