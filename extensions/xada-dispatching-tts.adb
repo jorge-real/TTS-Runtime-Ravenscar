@@ -37,7 +37,7 @@ package body XAda.Dispatching.TTS is
    Overhead : constant Time_Span := Microseconds (0);
    
    --  Type of event to be programmed
-   type Scheduling_Point_Type is (Hold_Point, End_Of_Work_Point, Next_Slot_Point);
+   type Scheduling_Point_Type is (None, Hold_Point, End_Of_Work_Point, Next_Slot_Point);
    
    --  Run time TT work info
    type Work_Control_Block is record
@@ -294,12 +294,6 @@ package body XAda.Dispatching.TTS is
                --  then the slot is considered completed. 
                if Current_WCB.Work_Thread_Id = Thread_Self then
                   Current_WCB.Has_Completed := True;
-                  
-                  --  Update the active status if it is a final slot
-                  if Any_Work_Slot (Current_Slot).Is_Final then
-                     Current_WCB.Is_Active := 
-                       (Current_Slot.Criticality_Level >= Current_Criticality_Level);
-                  end if;
                end if;
             end if;
          end if;
@@ -378,12 +372,6 @@ package body XAda.Dispatching.TTS is
          end if;
 
          Current_WCB.Has_Completed := True;
-
-         --  Update the active status if it is a final slot
-         if Any_Work_Slot (Current_Slot).Is_Final then
-            Current_WCB.Is_Active :=               
-              (Current_Slot.Criticality_Level >= Current_Criticality_Level);
-         end if;
 
          --  Cancel the Hold and End of Work handlers, if required
          Hold_Event.Cancel_Handler (Cancelled);
@@ -497,6 +485,46 @@ package body XAda.Dispatching.TTS is
          WCB (Work_Id).Overrun_Handler := Handler;           
       end Set_Overrun_Handler;     
    
+      ----------------------
+      -- Overrun_Detected --
+      ----------------------
+      
+      procedure Overrun_Detected
+        (Event : in out Ada.Real_Time.Timing_Events.Timing_Event) is         
+         Current_Slot      : constant Any_Time_Slot :=
+           Current_Plan (Current_Slot_Index);
+         Current_Work_Slot : Any_Work_Slot;
+         Current_WCB       : Work_Control_Block_Access;
+
+      begin
+         Current_Work_Slot := Any_Work_Slot (Current_Slot);         
+         Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
+
+         --  Overrun detected
+         if Current_WCB.Overrun_Handler /= null then
+            Current_WCB.Event.Slot := Current_Work_Slot;
+                       
+            --  Maybe Time_Of_Event has to be used instead of Now.
+            --  Due to the use of 'Overhead' maybe Now < Clock and then 
+            --  the handlers bellow are not directly executed after this one
+                     
+            --  Executes the Overrun handler as soon as possible
+            Current_WCB.Event.Set_Handler(Now, Current_WCB.Overrun_Handler);
+                     
+            --  Program the Reschedule event to check if the 
+            --   Work_Duration has changed after the handler execution
+            --  ARM12 D.15 20/2 
+            --   "If several timing events are set for the same time, 
+            --    they are executed in FIFO order of being set."
+            Reschedule_Event.Set_Handler(Now, Reschedule_Handler_Access);
+         else 
+            raise Program_Error 
+              with ("Overrun in TT task " &
+                      Current_Work_Slot.Work_Id'Image);
+         end if;
+
+      end Overrun_Detected;
+
       ---------------------
       -- Command_Handler --
       ---------------------
@@ -649,7 +677,9 @@ package body XAda.Dispatching.TTS is
             Current_Thread_Id := Current_WCB.Work_Thread_Id;
             
             if Current_Work_Slot.Is_Initial then
-               Current_WCB.Is_Active := Current_WCB.Next_Activation_Status;
+               --  TODO
+               --  Current_WCB.Is_Active := XXX;
+               null;
             end if;
             
             if Current_WCB.Is_Active then
@@ -663,7 +693,17 @@ package body XAda.Dispatching.TTS is
                if End_Of_Work_Release = Now then
                   --  Current work slot has reported a null work duration,
                   --   so the slot has to be skipped
-                  null;
+                  
+                  --  Check if it is the final slot of a sliced sequence
+                  --  and the work is not completed
+                  if Current_WCB.Is_Sliced and then 
+                    not Current_Work_Slot.Is_Continuation and then 
+                    not Current_WCB.Has_Completed
+                  then
+                     --  Handlers are set within the Overrun_Detected procedure
+                     Next_Scheduling_Point := None;
+                     Overrun_Detected(Event);
+                  end if;
                   
                elsif End_Of_Work_Release > Next_Slot_Release then
                   
@@ -749,7 +789,7 @@ package body XAda.Dispatching.TTS is
             --  This ensures that if the Work ID is not active at the beginning 
             --   of an sliced sequence, the sequence is ignored completely
             WCB (Current_Work_Slot.Work_Id).Is_Sliced :=
-              Current_Work_Slot.Is_Continuation;              
+              Current_Work_Slot.Is_Continuation;          
             
          end if;
 
@@ -766,6 +806,8 @@ package body XAda.Dispatching.TTS is
                Hold_Event.Set_Handler (Hold_Release - Overhead,
                                        Hold_Handler_Access);
                --  End_of_Work handler will be set when this event triggers
+            when None =>
+               null;
          end case;
          
       end Next_Slot_Handler;
@@ -838,24 +880,7 @@ package body XAda.Dispatching.TTS is
                   --  Context switch occurs after executing this handler
 
                else
-                  --  Overrun detected
-                  if Current_WCB.Overrun_Handler /= null then
-                     Current_WCB.Event.Slot := Current_Work_Slot;
-                       
-                     --  Executes the Overrun handler as soon as possible
-                     Current_WCB.Event.Set_Handler(Now, Current_WCB.Overrun_Handler);
-                     
-                     --  Program the Reschedule event to check if the 
-                     --   Work_Duration has changed after the handler execution
-                     --  ARM12 D.15 20/2 
-                     --   "If several timing events are set for the same time, 
-                     --    they are executed in FIFO order of being set."
-                     Reschedule_Event.Set_Handler(Now, Reschedule_Handler_Access);
-                  else 
-                     raise Program_Error 
-                       with ("Overrun in TT task " &
-                               Current_Work_Slot.Work_Id'Image);
-                  end if;
+                  Overrun_Detected(Event);
                end if;
                
             end if;            
@@ -897,7 +922,7 @@ package body XAda.Dispatching.TTS is
                             Current_Slot_Index'Image);
             end if;
             
-            --  Reschedule event can only be emitted from an EoW handler
+            --  Reschedule event can only be emitted from an EoW handler 
             End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
                                            End_Of_Work_Handler_Access);
          else

@@ -80,7 +80,6 @@ package XAda.Dispatching.TTS is
 
          -- Indicate if this slot is the first or last slot of a given job
          Is_Initial      : Boolean := True;
-         Is_Final        : Boolean := True;
       end record;
 
    function Work_Duration (S: in Work_Slot)
@@ -266,6 +265,10 @@ private
       --  It should be a constant, but a PO can't have constant components.
       Hold_Handler_Access : Ada.Real_Time.Timing_Events.Timing_Event_Handler :=
         Hold_Handler'Access;
+
+      --  Overrun dectection procedure
+      procedure Overrun_Detected
+        (Event : in out Ada.Real_Time.Timing_Events.Timing_Event);
 
       --  Procedure to enforce plan change
       procedure Change_Plan
