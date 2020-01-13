@@ -51,6 +51,7 @@ package body TTS_Example_B is
    procedure Main_Code (S : in out TT_Task_State);
    type Any_TT_Task_State is access all TT_Task_State;
    
+   
    type Cont_Task_State is new Simple_Task_State with
       record
          Observed_Jitter : Jitter_Range;

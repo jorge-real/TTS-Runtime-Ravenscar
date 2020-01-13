@@ -505,9 +505,10 @@ package body XAda.Dispatching.TTS is
       
       procedure Overrun_Detected
         (Current_Work_Slot : Any_Work_Slot;
-         Current_WCB       : Work_Control_Block_Access;
-         Time_Of_Event  : Time) is         
+         Time_Of_Event     : Time) is         
+         Current_WCB : Work_Control_Block_Access;
       begin
+         Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
 
          --  Overrun detected
          if Current_WCB.Overrun_Handler /= null then
@@ -656,7 +657,7 @@ package body XAda.Dispatching.TTS is
                   --  Context switch occurs after executing this handler
 
                else
-                  Overrun_Detected(Current_Work_Slot, Current_WCB, Event.Time_Of_Event);
+                  Overrun_Detected(Current_Work_Slot, Event.Time_Of_Event);
                end if;
                
             end if;            
@@ -698,6 +699,8 @@ package body XAda.Dispatching.TTS is
                             Current_Slot_Index'Image);
             end if;
             
+            --  TODO: Check if Hold event has to be set
+            
             --  Reschedule event can only be emitted from an EoW handler 
             End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
                                            End_Of_Work_Handler_Access);
@@ -708,9 +711,10 @@ package body XAda.Dispatching.TTS is
          end if;
          
       end Reschedule_Handler;        
-      ----------------------
+      
+      -----------------------
       -- Next_Slot_Handler --
-      ----------------------
+      -----------------------
 
       procedure Next_Slot_Handler (Event : in out Timing_Event) is
          Current_Slot      : Any_Time_Slot;
@@ -771,7 +775,8 @@ package body XAda.Dispatching.TTS is
             --  Process a Mode_Change_Slot  --
             ----------------------------------
 
-            if Next_Plan /= null then
+            if Next_Plan /= null and then 
+              Current_Slot.Criticality_Level >= Current_Criticality_Level then
                --  There's a pending plan change.
                if Next_Mode_Release = End_Of_MC_Slot then 
                   --  It takes effect at the end of the MC slot
@@ -794,11 +799,13 @@ package body XAda.Dispatching.TTS is
             --  Process a Sync_Slot   --
             ----------------------------
 
-            Current_Sync_Slot := Any_Sync_Slot (Current_Slot);
-            SCB (Current_Sync_Slot.Sync_Id).Last_Release := Now;
+            if Current_Slot.Criticality_Level >= Current_Criticality_Level then
+               Current_Sync_Slot := Any_Sync_Slot (Current_Slot);
+               SCB (Current_Sync_Slot.Sync_Id).Last_Release := Now;
 
-            Set_True (Sync_Point (Current_Sync_Slot.Sync_Id));
-
+               Set_True (Sync_Point (Current_Sync_Slot.Sync_Id));
+            end if;
+            
          elsif Current_Slot.all in Work_Slot'Class then
             -----------------------------
             --  Process a Work_Slot --
@@ -810,7 +817,7 @@ package body XAda.Dispatching.TTS is
             
             if Current_Work_Slot.Is_Initial then
                Current_WCB.Is_Active := 
-                 (Current_Criticality_Level <= Current_Work_Slot.Criticality_Level);
+                 (Current_Work_Slot.Criticality_Level >= Current_Criticality_Level);
             end if;
             
             if Current_WCB.Is_Active then
@@ -833,7 +840,7 @@ package body XAda.Dispatching.TTS is
                   then
                      --  Handlers are set within the Overrun_Detected procedure
                      Scheduling_Point := None;
-                     Overrun_Detected (Current_Work_Slot, Current_WCB, Event.Time_Of_Event);
+                     Overrun_Detected (Current_Work_Slot, Event.Time_Of_Event);
                   end if;
                   
                elsif End_Of_Work_Release > Next_Slot_Release then
@@ -868,6 +875,12 @@ package body XAda.Dispatching.TTS is
                      if Current_Work_Slot.Is_Continuation and then
                        Current_Work_Slot.Padding_Duration > Time_Span_Zero then
                         Scheduling_Point := Hold_Point;
+                        
+                        if Hold_Release < Now then
+                           raise Program_Error 
+                             with ("Invalid padding duration in Slot " &
+                               Current_Slot_Index'Image);
+                        end if;
                      else                     
                         Scheduling_Point := End_Of_Work_Point;
                      end if;         
@@ -903,6 +916,12 @@ package body XAda.Dispatching.TTS is
                   if Current_Work_Slot.Is_Continuation and then
                     Current_Work_Slot.Padding_Duration > Time_Span_Zero then
                      Scheduling_Point := Hold_Point;
+
+                     if Hold_Release < Now then
+                        raise Program_Error 
+                          with ("Invalid padding duration in Slot " &
+                                  Current_Slot_Index'Image);
+                     end if;
                   else                     
                      Scheduling_Point := End_Of_Work_Point;
                   end if;                        

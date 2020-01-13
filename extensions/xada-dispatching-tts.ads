@@ -264,7 +264,8 @@ private
 
       --  Overrun dectection procedure
       procedure Overrun_Detected
-        (Event : in out Ada.Real_Time.Timing_Events.Timing_Event);
+        (Current_Work_Slot : Any_Work_Slot;
+         Time_Of_Event     : Ada.Real_Time.Time);
 
       --  Procedure to enforce plan change
       procedure Change_Plan
