@@ -73,7 +73,6 @@ package body TT_Utilities is
 
       Slot.Is_Continuation := Continuation;
       Slot.Is_Initial := Initial;
-      Slot.Is_Final := Final;
 
    end Set_Work_Slot;
 

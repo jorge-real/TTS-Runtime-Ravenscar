@@ -36,6 +36,10 @@ package body XAda.Dispatching.TTS is
    --  This reduces the release jitter even further for TT tasks, to about 3 us
    Overhead : constant Time_Span := Microseconds (0);
    
+   --  Current Criticality Level
+   Current_Criticality_Level : Criticality_Levels := Criticality_Levels'First 
+     with Atomic;
+   
    --  Type of event to be programmed
    type Scheduling_Point_Type is (None, Hold_Point, End_Of_Work_Point, Next_Slot_Point);
    
@@ -49,11 +53,11 @@ package body XAda.Dispatching.TTS is
       Last_Slot_Release : Time      := Time_Last; -- Time of last slot release
       
       --  Overrun management
-      Event           : Overrun_Event;
-      Overrun_Handler : Timing_Event_Handler := null; --  Overrun handler
+      Event             : Overrun_Event;
+      Overrun_Handler   : Timing_Event_Handler := null; --  Overrun handler
       
       --  Activable Work ID
-      Is_Active              : Boolean := True;
+      Is_Active         : Boolean := True;
    end record;
    type Work_Control_Block_Access is access all Work_Control_Block;
 
@@ -91,7 +95,8 @@ package body XAda.Dispatching.TTS is
      (TTP : Time_Triggered_Plan_Access;
       At_Time : Time := End_Of_MC_Slot) is
    begin
-      if In_Protected_Action(Thread_Self) then
+      if In_Protected_Action (Thread_Self) then
+         --  TODO
          null;
       else 
          Time_Triggered_Scheduler.Set_Plan (TTP, At_Time);
@@ -196,16 +201,24 @@ package body XAda.Dispatching.TTS is
       Time_Triggered_Scheduler.Set_Overrun_Handler(Work_Id, Handler);
    end Set_Overrun_Handler;
    
-   ----------------------------
-   -- Set_Work_Active_Status --
-   ----------------------------
+   ----------------------------------
+   -- Set_System_Criticality_Level --
+   ----------------------------------
    
-   procedure Set_Work_Active_Status
-     (Work_Id : TT_Work_Id;
-      Active  : Boolean) is 
+   procedure Set_System_Criticality_Level
+     (New_Level : Criticality_Levels) is 
    begin
-      Time_Triggered_Scheduler.Set_Work_Active_Status(Work_Id, Active);
-   end Set_Work_Active_Status;
+      Current_Criticality_Level := New_Level;
+   end Set_System_Criticality_Level;
+      
+   ----------------------------------
+   -- Get_System_Criticality_Level --
+   ----------------------------------
+   
+   function Get_System_Criticality_Level return Criticality_Levels is 
+   begin
+      return Current_Criticality_Level;
+   end Get_System_Criticality_Level;
       
    ------------------------------
    -- Time_Triggered_Scheduler --
@@ -243,6 +256,7 @@ package body XAda.Dispatching.TTS is
                end if;
                
             elsif Current_Plan (Current_Slot_Index).all in Mode_Change_Slot'Class then
+               --  TODO: Check the CL of the mode change slot to find out if is active               
                
                --  Accept Set_Plan requests during a mode change slot (coming
                --  from PB tasks) and enforce the mode change.
@@ -266,9 +280,9 @@ package body XAda.Dispatching.TTS is
       ----------------------------
 
       procedure Prepare_For_Activation (Work_Id : TT_Work_Id) is
-         Current_Slot      : Any_Time_Slot;
-         Current_WCB       : Work_Control_Block_Access;
-         Cancelled         : Boolean;
+         Current_Slot : Any_Time_Slot;
+         Current_WCB  : Work_Control_Block_Access;
+         Cancelled    : Boolean;
       begin
          --  Register the Work_Id with the first task using it.
          --  Use of the Work_Id by another task breaks the model and causes PE
@@ -308,7 +322,7 @@ package body XAda.Dispatching.TTS is
          Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
                                       Next_Slot_Handler_Access);                        
 
-         --  The task has to execute Suspend_Until_True after this point
+         --  The task will execute Suspend_Until_True after this point
       end Prepare_For_Activation;
 
       ---------------------
@@ -396,7 +410,7 @@ package body XAda.Dispatching.TTS is
          Current_Plan := Next_Plan;
          Next_Plan := null;
          --  Setting both Current_ and Next_Slot_Index to 'First is consistent
-         --  with the new slot TE handler for the first slot of a new plan.
+         --  with the Next Slot TE handler for the first slot of a new plan.
          Current_Slot_Index := Current_Plan.all'First;
          Next_Slot_Index := Current_Plan.all'First;
          Next_Slot_Release := At_Time;
@@ -490,33 +504,28 @@ package body XAda.Dispatching.TTS is
       ----------------------
       
       procedure Overrun_Detected
-        (Event : in out Ada.Real_Time.Timing_Events.Timing_Event) is         
-         Current_Slot      : constant Any_Time_Slot :=
-           Current_Plan (Current_Slot_Index);
-         Current_Work_Slot : Any_Work_Slot;
+        (Current_Work_Slot : Any_Work_Slot;
          Current_WCB       : Work_Control_Block_Access;
-
+         Time_Of_Event  : Time) is         
       begin
-         Current_Work_Slot := Any_Work_Slot (Current_Slot);         
-         Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
 
          --  Overrun detected
          if Current_WCB.Overrun_Handler /= null then
             Current_WCB.Event.Slot := Current_Work_Slot;
                        
-            --  Maybe Time_Of_Event has to be used instead of Now.
-            --  Due to the use of 'Overhead' maybe Now < Clock and then 
+            --  Time_Of_Event is used instead of Now since
+            --  due to the use of 'Overhead' maybe Now < Clock and then 
             --  the handlers bellow are not directly executed after this one
                      
             --  Executes the Overrun handler as soon as possible
-            Current_WCB.Event.Set_Handler(Now, Current_WCB.Overrun_Handler);
+            Current_WCB.Event.Set_Handler(Time_Of_Event, Current_WCB.Overrun_Handler);
                      
             --  Program the Reschedule event to check if the 
             --   Work_Duration has changed after the handler execution
             --  ARM12 D.15 20/2 
             --   "If several timing events are set for the same time, 
             --    they are executed in FIFO order of being set."
-            Reschedule_Event.Set_Handler(Now, Reschedule_Handler_Access);
+            Reschedule_Event.Set_Handler(Time_Of_Event, Reschedule_Handler_Access);
          else 
             raise Program_Error 
               with ("Overrun in TT task " &
@@ -575,12 +584,135 @@ package body XAda.Dispatching.TTS is
          
       end Hold_Handler;
       
+      -------------------------
+      -- End_Of_Work_Handler --
+      -------------------------
+
+      procedure End_Of_Work_Handler (Event : in out Timing_Event) is
+         Current_Slot      : Any_Time_Slot;
+         Current_Work_Slot : Any_Work_Slot;
+         Current_WCB       : Work_Control_Block_Access;
+         Current_Thread_Id : Thread_Id;
+         Now               : Time;
+      begin
+
+         --  This is the current time, according to the plan
+         Now := End_Of_Work_Release;
+
+         ----------------------------------
+         --  PROCESS ENDING OF WORK SLOT --
+         ----------------------------------
+
+         --  Check for overrun in the ending slot, if it is a Work_Slot.
+         --  If this happens to be the first slot after a plan change, then
+         --  we come from a mode-change slot, so there is no overrun to check,
+         --  because it was checked before that mode-change slot
+
+         Current_Slot := Current_Plan (Current_Slot_Index);
+
+         --  Nothing to be done unless the ending slot was a Work_Slot
+         --  TODO: Check if this condition is required
+         if Current_Slot.all in Work_Slot'Class then
+
+            Current_Work_Slot := Any_Work_Slot (Current_Slot);
+            Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
+
+            --  Next condition has to be always true since EoW Handler is 
+            --  cancelled when a work finishes
+            if not Current_WCB.Has_Completed then
+               --  Possible overrun detected, unless task is running sliced.
+               --  First check that all is going well
+               Current_Thread_Id := Current_WCB.Work_Thread_Id;
+
+               --  Check whether the task is running sliced or this is
+               --  a real overrun situation
+               if Current_WCB.Is_Sliced then
+                  if Current_Work_Slot.Padding_Duration > Time_Span_Zero then
+                     if Current_Thread_Id.Hold_Signaled then
+                        raise Program_Error
+                          with ("Overrun in PA of Sliced TT task " &
+                                  Current_Work_Slot.Work_Id'Image);
+                     end if;
+                     --  In the other case, the thread is supposed already held                     
+                     pragma Assert (Current_Thread_Id /= Thread_Self);
+                  else 
+                     --  Thread_Self is the currently running thread on this CPU.
+                     --  If this assertion fails, the running TT task is using a
+                     --  wrong slot, which should never happen
+                     pragma Assert (Current_Thread_Id = Thread_Self);
+
+                     Hold (Current_Thread_Id, True);
+                     
+                     if (Next_Slot_Release > Now) then 
+                        --  Set timing event for the next scheduling point
+                        Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                                     Next_Slot_Handler_Access);
+                     else
+                        --  Directly process the new slot event
+                        Next_Slot_Handler (Event);
+                     end if;
+
+                  end if;
+                  --  Context switch occurs after executing this handler
+
+               else
+                  Overrun_Detected(Current_Work_Slot, Current_WCB, Event.Time_Of_Event);
+               end if;
+               
+            end if;            
+            
+         end if;
+
+      end End_Of_Work_Handler;
+      
+      ------------------------
+      -- Reschedule_Handler --
+      ------------------------
+      
+      procedure Reschedule_Handler (Event : in out Timing_Event) is
+         pragma Unreferenced (Event);
+         Current_Slot      : constant Any_Time_Slot :=
+           Current_Plan (Current_Slot_Index);
+         Current_Work_Slot : Any_Work_Slot;
+         Current_WCB       : Work_Control_Block_Access;
+      begin
+         if Current_Slot.all not in Work_Slot'Class then
+            raise Program_Error
+              with ("Reschedule handler called for a non-TT task");
+         end if;
+
+         Current_Work_Slot := Any_Work_Slot (Current_Slot);         
+         Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
+         
+         if End_Of_Work_Release < Current_WCB.Last_Slot_Release + 
+           Current_Work_Slot.Work_Duration then 
+            --  Work duration has been increased, so reprogram the EoW event
+            End_Of_Work_Release := Current_WCB.Last_Slot_Release + 
+              Current_Work_Slot.Work_Duration;
+            
+            if End_Of_Work_Release > Next_Slot_Release then                  
+                  raise Program_Error
+                    with ("Work duration is beyond slot duration for Work_Id " &
+                            Current_Work_Slot.Work_Id'Image & 
+                            " Slot Index " & 
+                            Current_Slot_Index'Image);
+            end if;
+            
+            --  Reschedule event can only be emitted from an EoW handler 
+            End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
+                                           End_Of_Work_Handler_Access);
+         else
+            raise Program_Error 
+              with ("Overrun in TT task " &
+                      Current_Work_Slot.Work_Id'Image);
+         end if;
+         
+      end Reschedule_Handler;        
       ----------------------
       -- Next_Slot_Handler --
       ----------------------
 
       procedure Next_Slot_Handler (Event : in out Timing_Event) is
-         pragma Unreferenced (Event);
          Current_Slot      : Any_Time_Slot;
          Current_Work_Slot : Any_Work_Slot;
          Current_WCB       : Work_Control_Block_Access;
@@ -677,9 +809,8 @@ package body XAda.Dispatching.TTS is
             Current_Thread_Id := Current_WCB.Work_Thread_Id;
             
             if Current_Work_Slot.Is_Initial then
-               --  TODO
-               --  Current_WCB.Is_Active := XXX;
-               null;
+               Current_WCB.Is_Active := 
+                 (Current_Criticality_Level <= Current_Work_Slot.Criticality_Level);
             end if;
             
             if Current_WCB.Is_Active then
@@ -701,8 +832,8 @@ package body XAda.Dispatching.TTS is
                     not Current_WCB.Has_Completed
                   then
                      --  Handlers are set within the Overrun_Detected procedure
-                     Next_Scheduling_Point := None;
-                     Overrun_Detected(Event);
+                     Scheduling_Point := None;
+                     Overrun_Detected (Current_Work_Slot, Current_WCB, Event.Time_Of_Event);
                   end if;
                   
                elsif End_Of_Work_Release > Next_Slot_Release then
@@ -811,127 +942,6 @@ package body XAda.Dispatching.TTS is
          end case;
          
       end Next_Slot_Handler;
-
-      -------------------------
-      -- End_Of_Work_Handler --
-      -------------------------
-
-      procedure End_Of_Work_Handler (Event : in out Timing_Event) is
-         Current_Slot      : Any_Time_Slot;
-         Current_Work_Slot : Any_Work_Slot;
-         Current_WCB       : Work_Control_Block_Access;
-         Current_Thread_Id : Thread_Id;
-         Now               : Time;
-      begin
-
-         --  This is the current time, according to the plan
-         Now := End_Of_Work_Release;
-
-         ----------------------------------
-         --  PROCESS ENDING OF WORK SLOT --
-         ----------------------------------
-
-         --  Check for overrun in the ending slot, if it is a Work_Slot.
-         --  If this happens to be the first slot after a plan change, then
-         --  we come from a mode-change slot, so there is no overrun to check,
-         --  because it was checked before that mode-change slot
-
-         Current_Slot := Current_Plan (Current_Slot_Index);
-
-         --  Nothing to be done unless the ending slot was a Work_Slot
-         --  TODO: Check if this condition is required
-         if Current_Slot.all in Work_Slot'Class then
-
-            Current_Work_Slot := Any_Work_Slot (Current_Slot);
-            Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
-
-            if not Current_WCB.Has_Completed then
-               --  Possible overrun detected, unless task is running sliced.
-               --  First check that all is going well
-               Current_Thread_Id := Current_WCB.Work_Thread_Id;
-
-               --  Check whether the task is running sliced or this is
-               --  a real overrun situation
-               if Current_WCB.Is_Sliced then
-                  if Current_Work_Slot.Padding_Duration > Time_Span_Zero then
-                     if Current_Thread_Id.Hold_Signaled then
-                        raise Program_Error
-                          with ("Overrun in PA of Sliced TT task " &
-                                  Current_Work_Slot.Work_Id'Image);
-                     end if;
-                  else 
-                     --  Thread_Self is the currently running thread on this CPU.
-                     --  If this assertion fails, the running TT task is using a
-                     --  wrong slot, which should never happen
-                     pragma Assert (Current_Thread_Id = Thread_Self);
-
-                     Hold (Current_Thread_Id, True);
-                     
-                     if (Next_Slot_Release > Now) then 
-                        --  Set timing event for the next scheduling point
-                        Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
-                                                     Next_Slot_Handler_Access);
-                     else
-                        --  Directly process the new slot event
-                        Next_Slot_Handler (Event);
-                     end if;
-
-                  end if;
-                  --  Context switch occurs after executing this handler
-
-               else
-                  Overrun_Detected(Event);
-               end if;
-               
-            end if;            
-            
-         end if;
-
-      end End_Of_Work_Handler;
-      
-      ------------------------
-      -- Reschedule_Handler --
-      ------------------------
-      
-      procedure Reschedule_Handler (Event : in out Timing_Event) is
-         pragma Unreferenced (Event);
-         Current_Slot      : constant Any_Time_Slot :=
-           Current_Plan (Current_Slot_Index);
-         Current_Work_Slot : Any_Work_Slot;
-         Current_WCB       : Work_Control_Block_Access;
-      begin
-         if Current_Slot.all not in Work_Slot'Class then
-            raise Program_Error
-              with ("Reschedule handler called for a non-TT task");
-         end if;
-
-         Current_Work_Slot := Any_Work_Slot (Current_Slot);         
-         Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
-         
-         if End_Of_Work_Release < Current_WCB.Last_Slot_Release + 
-           Current_Work_Slot.Work_Duration then 
-            --  Work duration has been increased, so reprogram the EoW event
-            End_Of_Work_Release := Current_WCB.Last_Slot_Release + 
-              Current_Work_Slot.Work_Duration;
-            
-            if End_Of_Work_Release > Next_Slot_Release then                  
-                  raise Program_Error
-                    with ("Work duration is beyond slot duration for Work_Id " &
-                            Current_Work_Slot.Work_Id'Image & 
-                            " Slot Index " & 
-                            Current_Slot_Index'Image);
-            end if;
-            
-            --  Reschedule event can only be emitted from an EoW handler 
-            End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
-                                           End_Of_Work_Handler_Access);
-         else
-            raise Program_Error 
-              with ("Overrun in TT task " &
-                      Current_Work_Slot.Work_Id'Image);
-         end if;
-         
-      end Reschedule_Handler;        
 
    end Time_Triggered_Scheduler;
 

@@ -78,7 +78,7 @@ package XAda.Dispatching.TTS is
          Padding_Size    : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
          Is_Continuation : Boolean := False;
 
-         -- Indicate if this slot is the first or last slot of a given job
+         -- Indicate if this slot is the first of a given job
          Is_Initial      : Boolean := True;
       end record;
 
@@ -162,11 +162,12 @@ package XAda.Dispatching.TTS is
      (Work_Id : TT_Work_Id;
       Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
 
-   --  Sets if a given Work Id is active or not. Deactivation can be postponed
-   --   until the work is completed
-   procedure Set_Work_Active_Status
-     (Work_Id : TT_Work_Id;
-      Active  : Boolean);
+   --  Sets the system criticality level
+   procedure Set_System_Criticality_Level
+     (New_Level : Criticality_Levels);
+
+   --  Returns the current criticality level of the system
+   function Get_System_Criticality_Level return Criticality_Levels;
 
 private
    Full_Slot_Size : constant Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Last;
@@ -207,11 +208,6 @@ private
       procedure Set_Overrun_Handler
         (Work_Id : TT_Work_Id;
          Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
-
-      --  Sets if a given Work Id is active or not
-      procedure Set_Work_Active_Status
-        (Work_Id : TT_Work_Id;
-         Active  : Boolean);
 
    private
       --  New slot timing event
@@ -300,9 +296,6 @@ private
 
       --  Start time of the first slot
       First_Slot_Release        : Ada.Real_Time.Time := Ada.Real_Time.Time_First;
-
-      --  Current Criticality Level
-      Current_Criticality_Level : Criticality_Levels := Criticality_Levels'First;
 
    end Time_Triggered_Scheduler;
 
