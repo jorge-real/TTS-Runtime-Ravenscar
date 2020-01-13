@@ -157,6 +157,10 @@ package XAda.Dispatching.TTS is
    --  Returns current slot
    function Get_Current_Slot return Any_Time_Slot;
 
+   --  Sets the default overrun handler
+   procedure Set_System_Overrun_Handler
+     (Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
+
    --  Sets the overrun handler for a given Work_Id
    procedure Set_Overrun_Handler
      (Work_Id : TT_Work_Id;
@@ -201,8 +205,13 @@ private
       procedure Prepare_For_Sync
         (Sync_Id : TT_Sync_Id);
 
-      -- Returns current slot
+      --  Returns current slot
       function Get_Current_Slot return Any_Time_Slot;
+
+      --  Sets the system-wide overrun handler
+      --  Work Overrun handler has precedence, if any
+      procedure Set_System_Overrun_Handler
+        (Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
 
       --  Sets the overrun handler for a given Work_Id
       procedure Set_Overrun_Handler
@@ -266,6 +275,10 @@ private
       procedure Overrun_Detected
         (Current_Work_Slot : Any_Work_Slot;
          Time_Of_Event     : Ada.Real_Time.Time);
+
+      -- System Overrun handler
+      System_Overrun_Handler_Access : Ada.Real_Time.Timing_Events.Timing_Event_Handler :=
+        null;
 
       --  Procedure to enforce plan change
       procedure Change_Plan

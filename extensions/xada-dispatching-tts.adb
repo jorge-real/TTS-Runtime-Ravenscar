@@ -191,6 +191,16 @@ package body XAda.Dispatching.TTS is
    end Get_Current_Slot;
    
    -------------------------
+   -- Set_System_Overrun_Handler --
+   -------------------------
+   
+   procedure Set_System_Overrun_Handler
+     (Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler) is
+   begin
+      Time_Triggered_Scheduler.Set_System_Overrun_Handler(Handler);
+   end Set_System_Overrun_Handler;
+   
+   -------------------------
    -- Set_Overrun_Handler --
    -------------------------
    
@@ -308,19 +318,20 @@ package body XAda.Dispatching.TTS is
                --  then the slot is considered completed. 
                if Current_WCB.Work_Thread_Id = Thread_Self then
                   Current_WCB.Has_Completed := True;
+
+                  --  Cancel the Hold and End of Work handlers, if required
+                  Hold_Event.Cancel_Handler (Cancelled);
+                  End_Of_Work_Event.Cancel_Handler (Cancelled);
+                  
+                  --  Set timing event for the next scheduling point
+                  Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                               Next_Slot_Handler_Access);                                 
                end if;
-            end if;
+            end if;         
          end if;
             
          --  Work has been completed and the caller is about to be suspended
          WCB (Work_Id).Is_Waiting := True;
-         --  Cancel the Hold and End of Work handlers, if required
-         Hold_Event.Cancel_Handler (Cancelled);
-         End_Of_Work_Event.Cancel_Handler (Cancelled);
-         
-         --  Set timing event for the next scheduling point
-         Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
-                                      Next_Slot_Handler_Access);                        
 
          --  The task will execute Suspend_Until_True after this point
       end Prepare_For_Activation;
@@ -443,6 +454,7 @@ package body XAda.Dispatching.TTS is
       procedure Prepare_For_Sync (Sync_Id : TT_Sync_Id) is
          Current_Slot      : Any_Time_Slot;
          Current_WCB       : Work_Control_Block_Access;
+         Cancelled         : Boolean;         
       begin
          --  Register the Sync_Id with the first task using it.
          --  Use of the Sync_Id by another task breaks the model and causes PE
@@ -468,10 +480,19 @@ package body XAda.Dispatching.TTS is
                --  then the slot is considered completed. 
                if Current_WCB.Work_Thread_Id = Thread_Self then
                   Current_WCB.Has_Completed := True;
+
+                  --  Cancel the Hold and End of Work handlers, if required
+                  Hold_Event.Cancel_Handler (Cancelled);
+                  End_Of_Work_Event.Cancel_Handler (Cancelled);                  
+              
+                  --  Set timing event for the next scheduling point
+                  Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
+                                               Next_Slot_Handler_Access);                                    
                end if;
             end if;
-         end if;
             
+         end if;
+         
          --  The task has to execute Suspend_Until_True after this point
       end Prepare_For_Sync;
 
@@ -488,6 +509,16 @@ package body XAda.Dispatching.TTS is
                     null);
       end Get_Current_Slot;      
       
+      -------------------------
+      -- Set_System_Overrun_Handler --
+      -------------------------
+      
+      procedure Set_System_Overrun_Handler
+        (Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler) is
+      begin
+         System_Overrun_Handler_Access := Handler;
+      end Set_System_Overrun_Handler;     
+   
       -------------------------
       -- Set_Overrun_Handler --
       -------------------------
@@ -506,12 +537,17 @@ package body XAda.Dispatching.TTS is
       procedure Overrun_Detected
         (Current_Work_Slot : Any_Work_Slot;
          Time_Of_Event     : Time) is         
-         Current_WCB : Work_Control_Block_Access;
+         Current_WCB     : Work_Control_Block_Access;
+         Overrun_Handler : Timing_Event_Handler := null;
       begin
          Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
 
+         Overrun_Handler := (if Current_WCB.Overrun_Handler /= null 
+                             then Current_WCB.Overrun_Handler 
+                             else System_Overrun_Handler_Access);
+         
          --  Overrun detected
-         if Current_WCB.Overrun_Handler /= null then
+         if Overrun_Handler /= null then
             Current_WCB.Event.Slot := Current_Work_Slot;
                        
             --  Time_Of_Event is used instead of Now since
@@ -519,7 +555,7 @@ package body XAda.Dispatching.TTS is
             --  the handlers bellow are not directly executed after this one
                      
             --  Executes the Overrun handler as soon as possible
-            Current_WCB.Event.Set_Handler(Time_Of_Event, Current_WCB.Overrun_Handler);
+            Current_WCB.Event.Set_Handler(Time_Of_Event, Overrun_Handler);
                      
             --  Program the Reschedule event to check if the 
             --   Work_Duration has changed after the handler execution
@@ -619,7 +655,7 @@ package body XAda.Dispatching.TTS is
             Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
 
             --  Next condition has to be always true since EoW Handler is 
-            --  cancelled when a work finishes
+            --  cancelled when a work finishes ???
             if not Current_WCB.Has_Completed then
                --  Possible overrun detected, unless task is running sliced.
                --  First check that all is going well
@@ -660,6 +696,16 @@ package body XAda.Dispatching.TTS is
                   Overrun_Detected(Current_Work_Slot, Event.Time_Of_Event);
                end if;
                
+            else 
+               --  Any Prepare_For_Whatever should mark the previous active work 
+               --   as completed and reprogram the NS Handler                            
+               raise Program_Error 
+                 with ("Unnecesary NS Handler in EoW handler");
+               
+               --  Set timing event for the next scheduling point
+               -- Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
+               --                              Next_Slot_Handler_Access);                        
+
             end if;            
             
          end if;
@@ -957,6 +1003,8 @@ package body XAda.Dispatching.TTS is
                                        Hold_Handler_Access);
                --  End_of_Work handler will be set when this event triggers
             when None =>
+               --  Used when an Overrun has been detected since the corresponding 
+               --  procedure already sets the proper handlers
                null;
          end case;
          
