@@ -34,7 +34,7 @@ package body XAda.Dispatching.TTS is
    --  23 and 24 us) we charge that overhead at the end of the slot, by
    --  effectively advancing the slot start time by the Overhead time.
    --  This reduces the release jitter even further for TT tasks, to about 3 us
-   Overhead : constant Time_Span := Microseconds (0);
+   Overhead : constant Time_Span := Microseconds (0); -- Microseconds (20);
    
    --  Current Criticality Level
    Current_Criticality_Level : Criticality_Levels := Criticality_Levels'First 
@@ -265,8 +265,8 @@ package body XAda.Dispatching.TTS is
                   Change_Plan (Next_Mode_Release);
                end if;
                
-            elsif Current_Plan (Current_Slot_Index).all in Mode_Change_Slot'Class then
-               --  TODO: Check the CL of the mode change slot to find out if is active               
+            elsif Current_Plan (Current_Slot_Index).all in Mode_Change_Slot'Class and then 
+              Current_Plan (Current_Slot_Index).Criticality_Level >= Current_Criticality_Level then
                
                --  Accept Set_Plan requests during a mode change slot (coming
                --  from PB tasks) and enforce the mode change.
@@ -700,7 +700,7 @@ package body XAda.Dispatching.TTS is
                --  Any Prepare_For_Whatever should mark the previous active work 
                --   as completed and reprogram the NS Handler                            
                raise Program_Error 
-                 with ("Unnecesary NS Handler in EoW handler");
+                 with ("Unnecesary call to EoW handler");
                
                --  Set timing event for the next scheduling point
                -- Next_Slot_Event.Set_Handler (Next_Slot_Release - Overhead,
@@ -863,7 +863,8 @@ package body XAda.Dispatching.TTS is
             
             if Current_Work_Slot.Is_Initial then
                Current_WCB.Is_Active := 
-                 (Current_Work_Slot.Criticality_Level >= Current_Criticality_Level);
+                 (Current_Work_Slot.Criticality_Level >= Current_Criticality_Level and  
+                    Current_Work_Slot.Work_Duration > Time_Span_Zero);
             end if;
             
             if Current_WCB.Is_Active then
