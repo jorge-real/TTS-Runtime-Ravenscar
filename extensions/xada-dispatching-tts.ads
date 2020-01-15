@@ -60,6 +60,9 @@ package XAda.Dispatching.TTS is
    type Mode_Change_Slot is new Time_Slot with null record;
    type Any_Mode_Change_Slot is access all Mode_Change_Slot'Class;
 
+   --  To represent an slot with no Id
+   No_Id : constant Positive;
+
    -- A sync slot
    type Sync_Slot is new Time_Slot with
       record
@@ -70,23 +73,26 @@ package XAda.Dispatching.TTS is
    --  To represent the whole duration of the slot
    Full_Slot_Size : constant Ada.Real_Time.Time_Span;
 
+   type Time_Span_Array is array (Criticality_Levels) of Ada.Real_Time.Time_Span;
+
    -- A work slot
    type Work_Slot is abstract new Time_Slot with
       record
          Work_Id         : TT_Work_Id;
-         Work_Size       : Ada.Real_Time.Time_Span;
-         Padding_Size    : Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Zero;
+         --  Work_Size       : Ada.Real_Time.Time_Span;
+         Work_Sizes      : Time_Span_Array;
+         Padding_Sizes   : Time_Span_Array := (others => Ada.Real_Time.Time_Span_Zero);
          Is_Continuation : Boolean := False;
 
          -- Indicate if this slot is the first of a given job
          Is_Initial      : Boolean := True;
       end record;
 
-   function Work_Duration (S: in Work_Slot)
-     return Ada.Real_Time.Time_Span is (S.Work_Size);
+   function Work_Duration (S: in Work_Slot; CL: in Criticality_Levels)
+     return Ada.Real_Time.Time_Span;
 
-   function Padding_Duration (S: in Work_Slot)
-     return Ada.Real_Time.Time_Span is (S.Padding_Size);
+   function Padding_Duration (S: in Work_Slot; CL: in Criticality_Levels)
+     return Ada.Real_Time.Time_Span;
 
    type Any_Work_Slot is access all Work_Slot'Class;
 
@@ -174,6 +180,7 @@ package XAda.Dispatching.TTS is
    function Get_System_Criticality_Level return Criticality_Levels;
 
 private
+   No_Id          : constant Positive := Positive'Last;
    Full_Slot_Size : constant Ada.Real_Time.Time_Span := Ada.Real_Time.Time_Span_Last;
    End_Of_MC_Slot : constant Ada.Real_Time.Time := Ada.Real_Time.Time_Last;
 

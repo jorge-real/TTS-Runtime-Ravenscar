@@ -7,13 +7,13 @@ package body TT_Utilities is
    ---------------------------------
 
    --  Auxiliary function for constructing slots --
-   function TT_Slot (Kind          : Slot_Type ;
-                     Slot_Duration : Time_Span;
-                     Slot_Id       : Positive := Positive'Last;
-                     Criticality   : TTS.Criticality_Levels := TTS.Criticality_Levels'First;
-                     Work_Duration : Time_Span := TTS.Full_Slot_Size;
-                     Padding       : Time_Span := Time_Span_Zero;
-                     Is_Initial    : Boolean := False)
+   function TT_Slot (Kind           : Slot_Type ;
+                     Slot_Duration  : Time_Span;
+                     Slot_Id        : Positive := TTS.No_Id;
+                     Criticality    : TTS.Criticality_Levels := TTS.Criticality_Levels'First;
+                     Work_Durations : TTS.Time_Span_Array := (others => TTS.Full_Slot_Size);
+                     Paddings       : TTS.Time_Span_Array := (others => Time_Span_Zero);
+                     Is_Initial     : Boolean := True)
 
                      return TTS.Any_Time_Slot
    is
@@ -33,53 +33,56 @@ package body TT_Utilities is
       end case;
 
       Set_TT_Slot (New_Slot, Kind, Slot_Duration,
-                   Slot_Id, Criticality, Work_Duration, Padding, Is_Initial);
+                   Slot_Id, Criticality, Work_Durations, Paddings, Is_Initial);
 
       return New_Slot;
    end TT_Slot;
 
-   procedure Set_Work_Slot(Slot          : TTS.Any_Work_Slot;
-                           Slot_Duration : Time_Span;
-                           Slot_Id       : Positive;
-                           Criticality   : TTS.Criticality_Levels;
-                           Work_Duration : Time_Span;
-                           Padding       : Time_Span;
-                           Continuation  : Boolean;
-                           Initial       : Boolean)
+   procedure Set_Work_Slot (Slot           : TTS.Any_Work_Slot;
+                            Slot_Duration  : Time_Span;
+                            Slot_Id        : Positive;
+                            Criticality    : TTS.Criticality_Levels;
+                            Work_Durations : TTS.Time_Span_Array;
+                            Paddings       : TTS.Time_Span_Array;
+                            Continuation   : Boolean;
+                            Initial        : Boolean)
    is
    begin
       Slot.Slot_Size := Slot_Duration;
       Slot.Work_Id := TTS.TT_Work_Id (Slot_Id);
 
-      if (Work_Duration = TTS.Full_Slot_Size) then
-         Slot.Work_Size := Slot_Duration;
-      elsif Work_Duration <= Slot_Duration then
-         Slot.Work_Size := Work_Duration;
-      else
-         raise Program_Error
-           with ("Invalid work duration");
-      end if;
+      for I in Work_Durations'Range loop
+         if (Work_Durations (I) = TTS.Full_Slot_Size) then
+            Slot.Work_Sizes (I) := Slot_Duration;
+         elsif Work_Durations (I) <= Slot_Duration then
+            Slot.Work_Sizes (I) := Work_Durations (I);
+         else
+            raise Program_Error
+              with ("Invalid work duration (" & I'Image & ")");
+         end if;
 
-      if Padding <= Slot_Duration then
-         Slot.Padding_Size := Padding;
-      else
-         raise Program_Error
-           with ("Invalid padding duration");
-      end if;
+         if Paddings (I) <= Slot.Work_Sizes (I) then
+            Slot.Padding_Sizes (I) := Paddings (I);
+         else
+            raise Program_Error
+              with ("Invalid padding duration (" & I'Image & ")");
+         end if;
+
+      end loop;
 
       Slot.Is_Continuation := Continuation;
       Slot.Is_Initial := Initial;
 
    end Set_Work_Slot;
 
-   procedure Set_TT_Slot (Slot          : TTS.Any_Time_Slot;
-                          Kind          : Slot_Type;
-                          Slot_Duration : Time_Span;
-                          Slot_Id       : Positive := Positive'Last;
-                          Criticality   : TTS.Criticality_Levels := TTS.Criticality_Levels'First;
-                          Work_Duration : Time_Span := TTS.Full_Slot_Size;
-                          Padding       : Time_Span := Ada.Real_Time.Time_Span_Zero;
-                          Is_Initial    : Boolean := False)
+   procedure Set_TT_Slot (Slot           : TTS.Any_Time_Slot;
+                          Kind           : Slot_Type;
+                          Slot_Duration  : Time_Span;
+                          Slot_Id        : Positive := TTS.No_Id;
+                          Criticality    : TTS.Criticality_Levels := TTS.Criticality_Levels'First;
+                          Work_Durations : TTS.Time_Span_Array := (others => TTS.Full_Slot_Size);
+                          Paddings       : TTS.Time_Span_Array := (others => Time_Span_Zero);
+                          Is_Initial     : Boolean := True)
    is
    begin
       case Kind is
@@ -117,7 +120,7 @@ package body TT_Utilities is
             end if;
 
             Set_Work_Slot (TTS.Any_Work_Slot (Slot), Slot_Duration,
-                           Slot_Id, Criticality, Work_Duration, Padding, False,
+                           Slot_Id, Criticality, Work_Durations, Paddings, False,
                            Is_Initial or (Kind = Initial));
 
          when Continuation =>
@@ -127,7 +130,7 @@ package body TT_Utilities is
             end if;
 
             Set_Work_Slot (TTS.Any_Work_Slot (Slot), Slot_Duration,
-                           Slot_Id, Criticality, Work_Duration, Padding, True, Is_Initial);
+                           Slot_Id, Criticality, Work_Durations, Paddings, True, Is_Initial);
 
          when Optional =>
             if Slot.all not in TTS.Optional_Slot'Class then
@@ -136,7 +139,7 @@ package body TT_Utilities is
             end if;
 
             Set_Work_Slot (TTS.Any_Work_Slot (Slot), Slot_Duration,
-                           Slot_Id, Criticality, Work_Duration, Padding, False, Is_Initial);
+                           Slot_Id, Criticality, Work_Durations, Paddings, False, Is_Initial);
 
          when Optional_Continuation =>
             if Slot.all not in TTS.Optional_Slot'Class then
@@ -145,7 +148,7 @@ package body TT_Utilities is
             end if;
 
             Set_Work_Slot (TTS.Any_Work_Slot (Slot), Slot_Duration,
-                           Slot_Id, Criticality, Work_Duration, Padding, True, Is_Initial);
+                           Slot_Id, Criticality, Work_Durations, Paddings, True, Is_Initial);
 
       end case;
 

@@ -43,21 +43,26 @@ package body XAda.Dispatching.TTS is
    --  Type of event to be programmed
    type Scheduling_Point_Type is (None, Hold_Point, End_Of_Work_Point, Next_Slot_Point);
    
+   --------------------------------
+   --  Control Block Structures  --
+   --------------------------------
+   
    --  Run time TT work info
    type Work_Control_Block is record
-      Has_Completed     : Boolean   := True;     --  TT part has completed
-      Is_Waiting        : Boolean   := False;    --  Task is waiting for release
-      Is_Sliced         : Boolean   := False;    --  Task is in a sliced sequence
-      Work_Thread_Id    : Thread_Id := Null_Thread_Id;  --  Underlying thread id
-      Last_Release      : Time      := Time_Last; -- Time of last release
-      Last_Slot_Release : Time      := Time_Last; -- Time of last slot release
+      Has_Completed          : Boolean   := True;            --  TT part has completed
+      Is_Waiting             : Boolean   := False;           --  Task is waiting for release
+      Is_Sliced              : Boolean   := False;           --  Task is in a sliced sequence
+      Work_Thread_Id         : Thread_Id := Null_Thread_Id;  --  Underlying thread id
+      Last_Release           : Time      := Time_Last;       --  Time of last release
+      Last_Slot_Release      : Time      := Time_Last;       --  Time of last slot release
       
       --  Overrun management
-      Event             : Overrun_Event;
-      Overrun_Handler   : Timing_Event_Handler := null; --  Overrun handler
+      Event                  : Overrun_Event;
+      Overrun_Handler        : Timing_Event_Handler := null; --  Overrun handler
       
       --  Activable Work ID
-      Is_Active         : Boolean := True;
+      Is_Active              : Boolean := True;
+      Criticality_Level : Criticality_Levels := Criticality_Levels'First;
    end record;
    type Work_Control_Block_Access is access all Work_Control_Block;
 
@@ -86,6 +91,21 @@ package body XAda.Dispatching.TTS is
    type Command_Event is new Ada.Real_Time.Timing_Events.Timing_Event with
      null record;
    type Any_Command_Event is access all Command_Event'Class;
+   
+   ------------------
+   --  Slot Types  --
+   ------------------
+
+   -- It returns the Work duration for a given CL. 
+   -- If the CL is greater than the slot CL, it returns the work duration for the slot CL.
+   -- It avoids misbehaviours if the work duration for higher CL are set to zero.
+   function Work_Duration (S : in Work_Slot; CL : in Criticality_Levels) return Time_Span is       
+     (S.Work_Sizes (Criticality_Levels'Min (S.Criticality_Level, CL)));
+   
+   -- It returns the Padding duration for a given CL. 
+   -- If the CL is greater than the slot CL, it returns the padding duration for the slot CL.
+   function Padding_Duration (S : in Work_Slot; CL : in Criticality_Levels) return Time_Span is       
+     (S.Padding_Sizes (Criticality_Levels'Min (S.Criticality_Level, CL)));
    
    ----------------
    --  Set_Plan  --
@@ -344,6 +364,7 @@ package body XAda.Dispatching.TTS is
          Current_Slot      : constant Any_Time_Slot :=
            Current_Plan (Current_Slot_Index);
          Current_Work_Slot : Any_Work_Slot;
+         Current_WCB       : Work_Control_Block_Access;
          Cancelled         : Boolean;
       begin
          if Current_Slot.all not in Work_Slot'Class then
@@ -352,16 +373,17 @@ package body XAda.Dispatching.TTS is
          end if;
          
          Current_Work_Slot := Any_Work_Slot (Current_Slot);
+         Current_WCB := WCB (Any_Work_Slot (Current_Slot).Work_Id)'access;         
          
-         if WCB (Current_Work_Slot.Work_Id).Work_Thread_Id /= Thread_Self then
+         if Current_WCB.Work_Thread_Id /= Thread_Self then
             raise Program_Error
               with ("Running Task does not correspond to Work_Id " &
                       Current_Work_Slot.Work_Id'Image);
          end if;
 
-         WCB (Current_Work_Slot.Work_Id).Is_Sliced := True;
+         Current_WCB.Is_Sliced := True;
          
-         if Current_Work_Slot.Padding_Duration > Time_Span_Zero then
+         if Current_Work_Slot.Padding_Duration (Current_WCB.Criticality_Level) > Time_Span_Zero then
             End_Of_Work_Event.Cancel_Handler (Cancelled);
             Hold_Event.Set_Handler (Hold_Release - Overhead,
                                     Hold_Handler_Access);
@@ -664,7 +686,7 @@ package body XAda.Dispatching.TTS is
                --  Check whether the task is running sliced or this is
                --  a real overrun situation
                if Current_WCB.Is_Sliced then
-                  if Current_Work_Slot.Padding_Duration > Time_Span_Zero then
+                  if Current_Work_Slot.Padding_Duration (Current_WCB.Criticality_Level) > Time_Span_Zero then
                      if Current_Thread_Id.Hold_Signaled then
                         raise Program_Error
                           with ("Overrun in PA of Sliced TT task " &
@@ -731,11 +753,15 @@ package body XAda.Dispatching.TTS is
          Current_Work_Slot := Any_Work_Slot (Current_Slot);         
          Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
          
+         Current_WCB.Criticality_Level := Current_Criticality_Level;
+         
          if End_Of_Work_Release < Current_WCB.Last_Slot_Release + 
-           Current_Work_Slot.Work_Duration then 
+           Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level) then 
             --  Work duration has been increased, so reprogram the EoW event
             End_Of_Work_Release := Current_WCB.Last_Slot_Release + 
-              Current_Work_Slot.Work_Duration;
+              Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level);
+            Next_Slot_Release := Current_WCB.Last_Slot_Release + 
+              Current_Work_Slot.Slot_Duration;
             
             if End_Of_Work_Release > Next_Slot_Release then                  
                   raise Program_Error
@@ -744,12 +770,17 @@ package body XAda.Dispatching.TTS is
                             " Slot Index " & 
                             Current_Slot_Index'Image);
             end if;
-            
-            --  TODO: Check if Hold event has to be set
-            
             --  Reschedule event can only be emitted from an EoW handler 
             End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
                                            End_Of_Work_Handler_Access);
+            
+            --  An overrun cannot happen during a sliced slot, 
+            --   so Hold handler does not need to be reconsidered
+            
+            --  Just in case, this is the final slot of a sliced sequence
+            if Is_Held (Current_WCB.Work_Thread_Id) then
+               Continue (Current_WCB.Work_Thread_Id);
+            end if;
          else
             raise Program_Error 
               with ("Overrun in TT task " &
@@ -862,17 +893,21 @@ package body XAda.Dispatching.TTS is
             Current_Thread_Id := Current_WCB.Work_Thread_Id;
             
             if Current_Work_Slot.Is_Initial then
+               -- System criticality level when the sequence of slots started
+               Current_WCB.Criticality_Level := Current_Criticality_Level;
+
                Current_WCB.Is_Active := 
-                 (Current_Work_Slot.Criticality_Level >= Current_Criticality_Level and  
-                    Current_Work_Slot.Work_Duration > Time_Span_Zero);
+                 (Current_Work_Slot.Criticality_Level >= Current_WCB.Criticality_Level and  
+                    Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level) > Time_Span_Zero);
+               
             end if;
             
             if Current_WCB.Is_Active then
                
                -- This value can be used within the Hold_Handler
-               End_Of_Work_Release := Now + Current_Work_Slot.Work_Duration;
+               End_Of_Work_Release := Now + Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level);
                Hold_Release := End_Of_Work_Release - 
-                 Current_Work_Slot.Padding_Duration;
+                 Current_Work_Slot.Padding_Duration (Current_WCB.Criticality_Level);
             
                --  Check what needs be done to the TT task of the new slot
                if End_Of_Work_Release = Now then
@@ -920,7 +955,7 @@ package body XAda.Dispatching.TTS is
                      Set_True (Release_Point (Current_Work_Slot.Work_Id));
                      
                      if Current_Work_Slot.Is_Continuation and then
-                       Current_Work_Slot.Padding_Duration > Time_Span_Zero then
+                       Current_Work_Slot.Padding_Duration (Current_WCB.Criticality_Level) > Time_Span_Zero then
                         Scheduling_Point := Hold_Point;
                         
                         if Hold_Release < Now then
@@ -961,7 +996,7 @@ package body XAda.Dispatching.TTS is
                   Continue (Current_Thread_Id);
 
                   if Current_Work_Slot.Is_Continuation and then
-                    Current_Work_Slot.Padding_Duration > Time_Span_Zero then
+                    Current_Work_Slot.Padding_Duration (Current_WCB.Criticality_Level) > Time_Span_Zero then
                      Scheduling_Point := Hold_Point;
 
                      if Hold_Release < Now then
