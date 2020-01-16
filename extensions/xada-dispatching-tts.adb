@@ -238,6 +238,7 @@ package body XAda.Dispatching.TTS is
    procedure Set_System_Criticality_Level
      (New_Level : Criticality_Levels) is 
    begin
+      Put_Line ("## CL change " & Current_Criticality_Level'Image & " -> " & New_Level'Image);
       Current_Criticality_Level := New_Level;
    end Set_System_Criticality_Level;
       

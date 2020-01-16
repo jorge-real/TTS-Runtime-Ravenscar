@@ -89,17 +89,6 @@ package body TTS_Example_D is
       Task_State => Wk4_Code'Access,
       Synced_Init => False);
 
-   type End_Of_Plan_IF_Task is new Initial_Final_Task_State with null record;
-   procedure Initialize (S : in out End_Of_Plan_IF_Task) is null;
-   procedure Initial_Code (S : in out End_Of_Plan_IF_Task);
-   procedure Final_Code (S : in out End_Of_Plan_IF_Task);
-
-   Wk5_Code : aliased End_Of_Plan_IF_Task;
-   Wk5 : Initial_Final_TT_Task
-     (Work_Id => 5,
-      Task_State => Wk5_Code'Access,
-      Synced_Init => False);
-
    type Synced_ET_Task is new Initial_OptionalFinal_Task_State with
       record
          Counter : Natural := 0;
@@ -148,19 +137,17 @@ package body TTS_Example_D is
        TT_Slot (Initial,       50 * ms, 2, HI),                                 --  #04 Seq. 1, IMs part
        TT_Slot (Terminal,     200 * ms, 4, LO, (LO => 30 * ms, HI => zero),
          Is_Initial => False),                                                  --  #05 Seq. 2, terminal of Ms part
-       TT_Slot (Continuation, 150 * ms, 2, HI, (LO => 30 * ms, HI => 50 * ms),
+       TT_Slot (Continuation, 200 * ms, 2, HI, (LO => 30 * ms, HI => 50 * ms),
          Is_Initial => False),                                                  --  #06 Seq. 1, continuation of Ms part
-       TT_Slot (Sync,         150 * ms, 1, LO),                                 --  #07 Sync Point for ET Task 1 + Empty
        TT_Slot (Terminal,     150 * ms, 2, HI, (LO => 30 * ms, HI => 150 * ms),
-         Is_Initial => False),                                                  --  #08 Seq. 1, terminal of Ms part
+         Is_Initial => False),                                                  --  #07 Seq. 1, terminal of Ms part
+       TT_Slot (Sync,         150 * ms, 1, LO),                                 --  #08 Sync Point for ET Task 1 + Empty
        TT_Slot (Regular,      150 * ms, 4, LO, (LO => 30 * ms, HI => zero),
          Is_Initial => False),                                                  --  #09 Seq. 2, F part
-       TT_Slot (Regular,      130 * ms, 2, HI, (LO => 30 * ms, HI => 50 * ms),
+       TT_Slot (Regular,      150 * ms, 2, HI, (LO => 30 * ms, HI => 50 * ms),
          Is_Initial => False),                                                  --  #10 Seq. 1, F part
-       TT_Slot (Regular,      120 * ms, 5, HI, (LO => 30 * ms, HI => 50 * ms)), --  #11 I part of end of plan
-       TT_Slot (Optional,      70 * ms, 6, LO),                                 --  #12 F part of synced ET Task 1
-       TT_Slot (Regular,       50 * ms, 5, HI),                                 --  #13 F part of end of plan
-       TT_Slot (Mode_Change,   80 * ms, Criticality => HI)                      --  #14
+       TT_Slot (Optional,      70 * ms, 5, LO),                                 --  #11 F part of synced ET Task 1
+       TT_Slot (Mode_Change,   80 * ms, Criticality => HI)                      --  #12
       );
    --  Actions of sequence initialisations
    procedure Main_Code (S : in out First_Init_Task) is  --  Simple_TT task with ID = 1
@@ -216,7 +203,7 @@ package body TTS_Example_D is
    begin
       Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
 
-      while S.Counter < 250_000 + (250_000 * (S.Iter mod 2)) loop
+      while S.Counter < 200_000 + (100_000 * (S.Iter mod 2)) loop
          S.Counter := S.Counter + 1;
          if S.Counter mod 20_000 = 0 then
             Put_Line ("First_IMF_Task.Mandatory_Code sliced step " & Now (Clock));
@@ -273,36 +260,6 @@ package body TTS_Example_D is
 
       Var_2 := S.Counter;
       Put_Line ("Second_IMF_Task.Final_Code Seq. 2 with Var_2 =" & Var_2'Image  & " at" & Now (Clock));
-   end Final_Code;
-
-   --  End of plan actions: I-F task with ID = 4
-   procedure Initial_Code (S : in out End_Of_Plan_IF_Task) is
-      Jitter : Time_Span := Clock - S.Release_Time;
-   begin
-      --  Log --
-      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
-      --  Log --
-
-      Put_Line ("End_Of_Plan_IF_Task.Initial_Code at" & Now (Clock));
-      Put_Line ("Value of Var_1 =" & Var_1'Image);
-      Put_Line ("Value of Var_2 =" & Var_2'Image);
-   end Initial_Code;
-
-   procedure Final_Code (S : in out End_Of_Plan_IF_Task) is
-      Jitter : Time_Span := Clock - S.Release_Time;
-   begin
-      --  Log --
-      Put_line( "Worker" & Integer (S.Work_Id)'Image & " Jitter = " &
-                Duration'Image (1000.0 * To_Duration (Jitter)) & " ms.");
-      --  Log --
-
-      Put_Line ("End_Of_Plan_IF_Task.Final_Code at" & Now (Clock));
-      New_Line;
-      Put_Line ("------------------------");
-      Put_Line ("Starting all over again!");
-      Put_Line ("------------------------");
-      New_Line;
    end Final_Code;
 
    procedure Initial_Code (S : in out Synced_ET_Task) is
