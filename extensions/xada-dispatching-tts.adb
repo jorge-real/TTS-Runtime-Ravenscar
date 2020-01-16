@@ -28,7 +28,7 @@ pragma Warnings(Off);
 pragma Warnings(On);
 
 package body XAda.Dispatching.TTS is
-   
+      
    --  Conservative bound of measured overhead on a STM32F4 Discovery
    --  Since release jitter is very predictable in this platform (between
    --  23 and 24 us) we charge that overhead at the end of the slot, by
@@ -744,6 +744,11 @@ package body XAda.Dispatching.TTS is
            Current_Plan (Current_Slot_Index);
          Current_Work_Slot : Any_Work_Slot;
          Current_WCB       : Work_Control_Block_Access;
+
+--           function Show_Time (Current : Time) return String is
+--             (">>> " & Duration'Image ( To_Duration (Current - First_Plan_Release) * 1000) & " ms " &
+--                "|" & Duration'Image ( To_Duration (Current - First_Slot_Release) * 1000) & " ms ");
+
       begin
          if Current_Slot.all not in Work_Slot'Class then
             raise Program_Error
@@ -753,10 +758,27 @@ package body XAda.Dispatching.TTS is
          Current_Work_Slot := Any_Work_Slot (Current_Slot);         
          Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
          
+--           Put_Line(Current_Slot_Index'Image & " # " & 
+--                      Current_Work_Slot.Work_Id'Image & " >> " &
+--                      Current_WCB.Criticality_Level'Image &
+--                      "-" & Current_Work_Slot.Criticality_Level'Image &
+--                      " : " & Show_Time(End_Of_Work_Release));
+         
          Current_WCB.Criticality_Level := Current_Criticality_Level;
+         
+--           Put_Line(Current_Slot_Index'Image & " # " & 
+--                      Current_Work_Slot.Work_Id'Image & " >> " &
+--                      Current_WCB.Criticality_Level'Image & 
+--                      "-" & Current_Work_Slot.Criticality_Level'Image &
+--                      " : " & Show_Time(Current_WCB.Last_Slot_Release + 
+--                      Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level)));
          
          if End_Of_Work_Release < Current_WCB.Last_Slot_Release + 
            Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level) then 
+            
+--              Put_Line("Applying new Work duration @ CL " & 
+--                         Current_Criticality_Level'Image);
+            
             --  Work duration has been increased, so reprogram the EoW event
             End_Of_Work_Release := Current_WCB.Last_Slot_Release + 
               Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level);
@@ -784,7 +806,8 @@ package body XAda.Dispatching.TTS is
          else
             raise Program_Error 
               with ("Overrun in TT task " &
-                      Current_Work_Slot.Work_Id'Image);
+                      Current_Work_Slot.Work_Id'Image & " @ CL " &
+                   Current_Criticality_Level'Image);
          end if;
          
       end Reschedule_Handler;        

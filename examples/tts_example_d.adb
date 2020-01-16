@@ -1,4 +1,5 @@
 with Ada.Real_Time; use Ada.Real_Time;
+with Ada.Real_Time.Timing_Events;
 with Logging_Support;
 with Ada.Text_IO; use Ada.Text_IO;
 with System; use System;
@@ -50,6 +51,7 @@ package body TTS_Example_D is
      with
       record
          Counter : Natural := 0;
+         Iter    : Natural := 0;
       end record;
    procedure Initialize (S : in out First_IMF_Task) is null;
    procedure Initial_Code (S : in out First_IMF_Task);
@@ -135,22 +137,23 @@ package body TTS_Example_D is
      (Sync_Id => 2, Offset => 158);
 
    ms : constant Time_Span := Milliseconds (1);
+   zero : constant Time_Span := Time_Span_Zero;
 
    --  The TT plan
    TT_Plan : aliased TTS.Time_Triggered_Plan :=
      ( TT_Slot (Regular,      150 * ms, 1, HI, (LO => 30 * ms, HI => 50 * ms)), --  #00 Single slot for 1st seq. start
        TT_Slot (Regular,       50 * ms, 3, LO),                                 --  #01 Single slot for 2nd seq. start
        TT_Slot (Sync,         150 * ms, 2, HI),                                 --  #02 Sync point for sporadic task SP1
-       TT_Slot (Initial,      350 * ms, 4, LO, (LO => 30 * ms, HI => 0 * ms)),  --  #03 Seq. 2, IMs part
+       TT_Slot (Initial,      350 * ms, 4, LO, (LO => 30 * ms, HI => zero)),    --  #03 Seq. 2, IMs part
        TT_Slot (Initial,       50 * ms, 2, HI),                                 --  #04 Seq. 1, IMs part
-       TT_Slot (Terminal,     200 * ms, 4, LO, (LO => 30 * ms, HI => 0 * ms),
+       TT_Slot (Terminal,     200 * ms, 4, LO, (LO => 30 * ms, HI => zero),
          Is_Initial => False),                                                  --  #05 Seq. 2, terminal of Ms part
        TT_Slot (Continuation, 150 * ms, 2, HI, (LO => 30 * ms, HI => 50 * ms),
          Is_Initial => False),                                                  --  #06 Seq. 1, continuation of Ms part
        TT_Slot (Sync,         150 * ms, 1, LO),                                 --  #07 Sync Point for ET Task 1 + Empty
-       TT_Slot (Terminal,      50 * ms, 2, HI,
+       TT_Slot (Terminal,     150 * ms, 2, HI, (LO => 30 * ms, HI => 150 * ms),
          Is_Initial => False),                                                  --  #08 Seq. 1, terminal of Ms part
-       TT_Slot (Regular,      150 * ms, 4, LO, (LO => 30 * ms, HI => 0 * ms),
+       TT_Slot (Regular,      150 * ms, 4, LO, (LO => 30 * ms, HI => zero),
          Is_Initial => False),                                                  --  #09 Seq. 2, F part
        TT_Slot (Regular,      130 * ms, 2, HI, (LO => 30 * ms, HI => 50 * ms),
          Is_Initial => False),                                                  --  #10 Seq. 1, F part
@@ -200,6 +203,12 @@ package body TTS_Example_D is
       --  Log --
 
       S.Counter := Var_1;
+      S.Iter := S.Iter + 1;
+
+      if S.Iter mod 5 = 0 then
+         TTS.Set_System_Criticality_Level(LO);
+      end if;
+
       Put_Line ("First_IMF_Task.Initial_Code ended at " & Now (Clock));
    end Initial_Code;
 
@@ -207,7 +216,7 @@ package body TTS_Example_D is
    begin
       Put_Line ("First_IMF_Task.Mandatory_Code sliced started at " & Now (Clock));
 
-      while S.Counter < 250_000 loop
+      while S.Counter < 250_000 + (250_000 * (S.Iter mod 2)) loop
          S.Counter := S.Counter + 1;
          if S.Counter mod 20_000 = 0 then
             Put_Line ("First_IMF_Task.Mandatory_Code sliced step " & Now (Clock));
@@ -327,12 +336,33 @@ package body TTS_Example_D is
       Put_Line ("Synced_ET_Task.Final_Code with counter = " & S.Counter'Image  & " at" & Now (Clock));
    end Final_Code;
 
+   protected Criticality_Manager
+     with Priority => System.Interrupt_Priority'Last is
+
+      procedure Overrun_Handler
+        (Event : in out Ada.Real_Time.Timing_Events.Timing_Event);
+
+   end Criticality_Manager;
+
+   protected body Criticality_Manager is
+
+      procedure Overrun_Handler
+        (Event : in out Ada.Real_Time.Timing_Events.Timing_Event) is
+      begin
+         Put_Line("Overrun detected!! Moving to HI criticality");
+         TTS.Set_System_Criticality_Level(HI);
+      end Overrun_Handler;
+
+   end Criticality_Manager;
+
    ----------
    -- Main --
    ----------
 
    procedure Main is
    begin
+      TTS.Set_System_Criticality_Level(LO);
+      TTS.Set_System_Overrun_Handler(Criticality_Manager.Overrun_Handler'Access);
       delay until Epoch_Support.Epoch;
       TTS.Set_Plan(TT_Plan'Access);
       delay until Ada.Real_Time.Time_Last;

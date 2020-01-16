@@ -70,6 +70,7 @@ package body TT_Utilities is
 
       end loop;
 
+      Slot.Criticality_Level := Criticality;
       Slot.Is_Continuation := Continuation;
       Slot.Is_Initial := Initial;
 
