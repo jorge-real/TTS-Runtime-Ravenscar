@@ -66,7 +66,14 @@ package XAda.Dispatching.TTS is
    -- A sync slot
    type Sync_Slot is new Time_Slot with
       record
-         Sync_Id         : TT_Sync_Id;
+         Sync_Id          : TT_Sync_Id;
+
+         -- Indicates if this sync event is the first of a sync sequence
+         Is_Initial       : Boolean := True;
+         -- Indicates if this sync event is part of a work sequence
+         In_Work_Sequence : Boolean := False;
+         -- If In_Work_Sequence this indicates the identifier of the work
+         Work_Id          : TT_Work_Id;
       end record;
    type Any_Sync_Slot is access all Sync_Slot'Class;
 
@@ -84,7 +91,7 @@ package XAda.Dispatching.TTS is
          Padding_Sizes   : Time_Span_Array := (others => Ada.Real_Time.Time_Span_Zero);
          Is_Continuation : Boolean := False;
 
-         -- Indicate if this slot is the first of a given job
+         -- Indicates if this slot is the first of a work sequence
          Is_Initial      : Boolean := True;
       end record;
 
@@ -120,6 +127,8 @@ package XAda.Dispatching.TTS is
    --  Types representing/accessing TT plans
    type Time_Triggered_Plan        is array (Natural range <>) of Any_Time_Slot;
    type Time_Triggered_Plan_Access is access all Time_Triggered_Plan;
+
+   Plan_Error : exception;
 
    ------------------------------
    --  TT Scheduler interface  --

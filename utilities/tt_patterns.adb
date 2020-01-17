@@ -131,7 +131,7 @@ package body TT_Patterns is
 
          Task_State.Initial_Code;
 
-         if (Task_State.Final_Is_Required) then
+         if Task_State.Final_Is_Required then
             TTS.Wait_For_Activation (Optional_Work_Id, Task_State.Release_Time);
             Task_State.Work_Id := Optional_Work_Id;      
 
@@ -183,7 +183,7 @@ package body TT_Patterns is
 
          Task_State.Initial_Code;
 
-         if (Task_State.Final_Is_Required) then
+         if Task_State.Final_Is_Required then
             TTS.Wait_For_Activation (Work_Id, Task_State.Release_Time);
 
             Task_State.Final_Code;

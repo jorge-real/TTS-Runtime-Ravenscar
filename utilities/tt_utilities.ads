@@ -31,7 +31,9 @@ package TT_Utilities is
                      Criticality    : TTS.Criticality_Levels := TTS.Criticality_Levels'First;
                      Work_Durations : TTS.Time_Span_Array := (others => TTS.Full_Slot_Size);
                      Paddings       : TTS.Time_Span_Array := (others => Time_Span_Zero);
-                     Is_Initial     : Boolean := True)
+                     Is_Initial     : Boolean := True;
+                     Sequence_Id    : Positive  := TTS.No_Id -- Only for Sync slots
+                    )
                      return TTS.Any_Time_Slot
    --  Make sure the Slot_Duration is non-negative and
    --  the value of Slot_Id is consistent with the kind of slot
@@ -57,7 +59,9 @@ package TT_Utilities is
                           Criticality    : TTS.Criticality_Levels := TTS.Criticality_Levels'First;
                           Work_Durations : TTS.Time_Span_Array := (others => TTS.Full_Slot_Size);
                           Paddings       : TTS.Time_Span_Array := (others => Time_Span_Zero);
-                          Is_Initial     : Boolean := True)
+                          Is_Initial     : Boolean := True;
+                          Sequence_Id    : Positive  := TTS.No_Id -- Only for Sync slots
+                         )
      --  Make sure the Slot_Duration is non-negative and
      --  the value of Slot_Id is consistent with the kind of slot
      with Pre => ( Slot_Duration >= Time_Span_Zero and then

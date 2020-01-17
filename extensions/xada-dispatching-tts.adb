@@ -62,7 +62,7 @@ package body XAda.Dispatching.TTS is
       
       --  Activable Work ID
       Is_Active              : Boolean := True;
-      Criticality_Level : Criticality_Levels := Criticality_Levels'First;
+      Criticality_Level      : Criticality_Levels := Criticality_Levels'First;
    end record;
    type Work_Control_Block_Access is access all Work_Control_Block;
 
@@ -74,9 +74,12 @@ package body XAda.Dispatching.TTS is
 
    --  Run time TT sync info
    type Sync_Control_Block is record
-      Sync_Thread_Id  : Thread_Id := Null_Thread_Id;  --  Underlying thread id
-      Last_Release    : Time      := Time_Last;  -- Time of last release
+      Sync_Thread_Id : Thread_Id := Null_Thread_Id; --  Underlying thread id
+      Last_Release   : Time      := Time_Last;      --  Time of last release
+      --  Activable sync ID
+      Is_Active      : Boolean   := True;
    end record;
+   type Sync_Control_Block_Access is access all Sync_Control_Block;
 
    --  Array of Work_Control_Blocks
    SCB : array (TT_Sync_Id) of aliased Sync_Control_Block;
@@ -746,10 +749,6 @@ package body XAda.Dispatching.TTS is
          Current_Work_Slot : Any_Work_Slot;
          Current_WCB       : Work_Control_Block_Access;
 
---           function Show_Time (Current : Time) return String is
---             (">>> " & Duration'Image ( To_Duration (Current - First_Plan_Release) * 1000) & " ms " &
---                "|" & Duration'Image ( To_Duration (Current - First_Slot_Release) * 1000) & " ms ");
-
       begin
          if Current_Slot.all not in Work_Slot'Class then
             raise Program_Error
@@ -759,26 +758,10 @@ package body XAda.Dispatching.TTS is
          Current_Work_Slot := Any_Work_Slot (Current_Slot);         
          Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
          
---           Put_Line(Current_Slot_Index'Image & " # " & 
---                      Current_Work_Slot.Work_Id'Image & " >> " &
---                      Current_WCB.Criticality_Level'Image &
---                      "-" & Current_Work_Slot.Criticality_Level'Image &
---                      " : " & Show_Time(End_Of_Work_Release));
-         
          Current_WCB.Criticality_Level := Current_Criticality_Level;
-         
---           Put_Line(Current_Slot_Index'Image & " # " & 
---                      Current_Work_Slot.Work_Id'Image & " >> " &
---                      Current_WCB.Criticality_Level'Image & 
---                      "-" & Current_Work_Slot.Criticality_Level'Image &
---                      " : " & Show_Time(Current_WCB.Last_Slot_Release + 
---                      Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level)));
          
          if End_Of_Work_Release < Current_WCB.Last_Slot_Release + 
            Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level) then 
-            
---              Put_Line("Applying new Work duration @ CL " & 
---                         Current_Criticality_Level'Image);
             
             --  Work duration has been increased, so reprogram the EoW event
             End_Of_Work_Release := Current_WCB.Last_Slot_Release + 
@@ -821,6 +804,7 @@ package body XAda.Dispatching.TTS is
          Current_Slot      : Any_Time_Slot;
          Current_Work_Slot : Any_Work_Slot;
          Current_WCB       : Work_Control_Block_Access;
+         Current_SCB       : Sync_Control_Block_Access;
          Current_Sync_Slot : Any_Sync_Slot;
          Current_Thread_Id : Thread_Id;
          Scheduling_Point  : Scheduling_Point_Type;
@@ -869,12 +853,16 @@ package body XAda.Dispatching.TTS is
             --  Process an Empty_Slot  --
             -----------------------------
             
+            Put_Line ("(EE)  Slot: " & Current_Slot_Index'Image);
             null;
             
          elsif Current_Slot.all in Mode_Change_Slot'Class then
             ----------------------------------
             --  Process a Mode_Change_Slot  --
             ----------------------------------
+
+            Put_Line ("(MM)  Slot: " & Current_Slot_Index'Image & 
+                        " CL: " & Current_Slot.Criticality_Level'Image);
 
             if Next_Plan /= null and then 
               Current_Slot.Criticality_Level >= Current_Criticality_Level then
@@ -900,9 +888,29 @@ package body XAda.Dispatching.TTS is
             --  Process a Sync_Slot   --
             ----------------------------
 
-            if Current_Slot.Criticality_Level >= Current_Criticality_Level then
-               Current_Sync_Slot := Any_Sync_Slot (Current_Slot);
-               SCB (Current_Sync_Slot.Sync_Id).Last_Release := Now;
+            Current_Sync_Slot := Any_Sync_Slot (Current_Slot);
+            Current_SCB := SCB (Current_Sync_Slot.Sync_Id)'access;
+
+            if Current_Sync_Slot.Is_Initial then
+               Current_SCB.Is_Active := 
+                 (Current_Sync_Slot.Criticality_Level >= Current_Criticality_Level);
+               
+               if Current_Sync_Slot.In_Work_Sequence then
+                  --  This sync slot controls the activation of a work sequence
+                  WCB (Current_Sync_Slot.Work_Id).Criticality_Level := Current_Criticality_Level;
+                  WCB (Current_Sync_Slot.Work_Id).Is_Active := Current_SCB.Is_Active;
+               end if;
+            elsif Current_Sync_Slot.In_Work_Sequence then
+               --  This sync slot is part of an ongoing work sequence
+               Current_SCB.Is_Active := WCB (Current_Sync_Slot.Work_Id).Is_Active;
+            end if;
+
+            Put_Line ("{" & Current_Sync_Slot.Sync_Id'Image & "} " &
+                        " Slot: " & Current_Slot_Index'Image & 
+                        " Active: " & Current_SCB.Is_Active'Image);
+
+            if Current_SCB.Is_Active then
+               Current_SCB.Last_Release := Now;
 
                Set_True (Sync_Point (Current_Sync_Slot.Sync_Id));
             end if;
@@ -921,13 +929,18 @@ package body XAda.Dispatching.TTS is
                Current_WCB.Criticality_Level := Current_Criticality_Level;
 
                Current_WCB.Is_Active := 
-                 (Current_Work_Slot.Criticality_Level >= Current_WCB.Criticality_Level and  
+                 (Current_Work_Slot.Criticality_Level >= Current_Criticality_Level and  
                     Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level) > Time_Span_Zero);
                
             end if;
             
+            Put_Line ("<" & Current_Work_Slot.Work_Id'Image & "> " &
+                        " Slot: " & Current_Slot_Index'Image & 
+                        " Active: " & Current_WCB.Is_Active'Image & 
+                        " Waiting: " & Current_WCB.Is_Waiting'Image);
+
             if Current_WCB.Is_Active then
-               
+                              
                -- This value can be used within the Hold_Handler
                End_Of_Work_Release := Now + Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level);
                Hold_Release := End_Of_Work_Release - 
