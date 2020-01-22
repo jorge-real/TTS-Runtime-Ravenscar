@@ -319,7 +319,7 @@ package body TTS_Example_D is
    procedure Main is
    begin
       TTS.Set_System_Criticality_Level(LO);
-      TTS.Set_System_Overrun_Handler(Criticality_Manager.Overrun_Handler'Access);
+      TTS.Set_Default_Overrun_Handler(Criticality_Manager.Overrun_Handler'Access);
       delay until Epoch_Support.Epoch;
       TTS.Set_Plan(TT_Plan'Access);
       delay until Ada.Real_Time.Time_Last;

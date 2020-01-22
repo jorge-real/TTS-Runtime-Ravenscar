@@ -164,11 +164,11 @@ package XAda.Dispatching.TTS is
    function Get_Current_Slot return Any_Time_Slot;
 
    --  Sets the default overrun handler
-   procedure Set_System_Overrun_Handler
+   procedure Set_Default_Overrun_Handler
      (Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
 
    --  Sets the overrun handler for a given Work_Id
-   procedure Set_Overrun_Handler
+   procedure Set_Specific_Overrun_Handler
      (Work_Id : TT_Work_Id;
       Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
 
@@ -178,6 +178,10 @@ package XAda.Dispatching.TTS is
 
    --  Returns the current criticality level of the system
    function Get_System_Criticality_Level return Criticality_Levels;
+
+   --  Returns the active criticality level in a given work
+   function Get_Active_Criticality_Level
+     (Work_Id : TT_Work_Id ) return Criticality_Levels;
 
 private
    No_Id          : constant Positive := Positive'Last;
@@ -217,11 +221,11 @@ private
 
       --  Sets the system-wide overrun handler
       --  Work Overrun handler has precedence, if any
-      procedure Set_System_Overrun_Handler
+      procedure Set_Default_Overrun_Handler
         (Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
 
       --  Sets the overrun handler for a given Work_Id
-      procedure Set_Overrun_Handler
+      procedure Set_Specific_Overrun_Handler
         (Work_Id : TT_Work_Id;
          Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler);
 

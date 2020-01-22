@@ -211,25 +211,25 @@ package body XAda.Dispatching.TTS is
    end Get_Current_Slot;
    
    -------------------------
-   -- Set_System_Overrun_Handler --
+   -- Set_Default_Overrun_Handler --
    -------------------------
    
-   procedure Set_System_Overrun_Handler
+   procedure Set_Default_Overrun_Handler
      (Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler) is
    begin
-      Time_Triggered_Scheduler.Set_System_Overrun_Handler(Handler);
-   end Set_System_Overrun_Handler;
+      Time_Triggered_Scheduler.Set_Default_Overrun_Handler(Handler);
+   end Set_Default_Overrun_Handler;
    
    -------------------------
-   -- Set_Overrun_Handler --
+   -- Set_Specific_Overrun_Handler --
    -------------------------
    
-   procedure Set_Overrun_Handler
+   procedure Set_Specific_Overrun_Handler
      (Work_Id : TT_Work_Id;
       Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler) is
    begin
-      Time_Triggered_Scheduler.Set_Overrun_Handler(Work_Id, Handler);
-   end Set_Overrun_Handler;
+      Time_Triggered_Scheduler.Set_Specific_Overrun_Handler(Work_Id, Handler);
+   end Set_Specific_Overrun_Handler;
    
    ----------------------------------
    -- Set_System_Criticality_Level --
@@ -251,6 +251,23 @@ package body XAda.Dispatching.TTS is
       return Current_Criticality_Level;
    end Get_System_Criticality_Level;
       
+   
+   ----------------------------------
+   -- Get_Active_Criticality_Level --
+   ----------------------------------
+   
+   function Get_Active_Criticality_Level
+     (Work_Id : TT_Work_Id ) return Criticality_Levels is
+   begin
+      if WCB (Work_Id).Work_Thread_Id /= Thread_Self then
+         raise Program_Error
+           with ("Running Task does not correspond to Work_Id " &
+                   Current_Work_Slot.Work_Id'Image);
+      end if;
+
+      return WCB (Work_Id).Criticality_Level;
+   end Get_Active_Criticality_Level;
+   
    ------------------------------
    -- Time_Triggered_Scheduler --
    ------------------------------
@@ -533,25 +550,25 @@ package body XAda.Dispatching.TTS is
       end Get_Current_Slot;      
       
       -------------------------
-      -- Set_System_Overrun_Handler --
+      -- Set_Default_Overrun_Handler --
       -------------------------
       
-      procedure Set_System_Overrun_Handler
+      procedure Set_Default_Overrun_Handler
         (Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler) is
       begin
          System_Overrun_Handler_Access := Handler;
-      end Set_System_Overrun_Handler;     
+      end Set_Default_Overrun_Handler;     
    
       -------------------------
-      -- Set_Overrun_Handler --
+      -- Set_Specific_Overrun_Handler --
       -------------------------
       
-      procedure Set_Overrun_Handler
+      procedure Set_Specific_Overrun_Handler
         (Work_Id : TT_Work_Id;
          Handler : Ada.Real_Time.Timing_Events.Timing_Event_Handler) is
       begin
          WCB (Work_Id).Overrun_Handler := Handler;           
-      end Set_Overrun_Handler;     
+      end Set_Specific_Overrun_Handler;     
    
       ----------------------
       -- Overrun_Detected --
@@ -759,26 +776,10 @@ package body XAda.Dispatching.TTS is
          Current_Work_Slot := Any_Work_Slot (Current_Slot);         
          Current_WCB := WCB (Current_Work_Slot.Work_Id)'access;
          
---           Put_Line(Current_Slot_Index'Image & " # " & 
---                      Current_Work_Slot.Work_Id'Image & " >> " &
---                      Current_WCB.Criticality_Level'Image &
---                      "-" & Current_Work_Slot.Criticality_Level'Image &
---                      " : " & Show_Time(End_Of_Work_Release));
-         
          Current_WCB.Criticality_Level := Current_Criticality_Level;
-         
---           Put_Line(Current_Slot_Index'Image & " # " & 
---                      Current_Work_Slot.Work_Id'Image & " >> " &
---                      Current_WCB.Criticality_Level'Image & 
---                      "-" & Current_Work_Slot.Criticality_Level'Image &
---                      " : " & Show_Time(Current_WCB.Last_Slot_Release + 
---                      Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level)));
          
          if End_Of_Work_Release < Current_WCB.Last_Slot_Release + 
            Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level) then 
-            
---              Put_Line("Applying new Work duration @ CL " & 
---                         Current_Criticality_Level'Image);
             
             --  Work duration has been increased, so reprogram the EoW event
             End_Of_Work_Release := Current_WCB.Last_Slot_Release + 
