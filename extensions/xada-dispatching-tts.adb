@@ -110,6 +110,18 @@ package body XAda.Dispatching.TTS is
    function Padding_Duration (S : in Work_Slot; CL : in Criticality_Levels) return Time_Span is       
      (S.Padding_Sizes (Criticality_Levels'Min (S.Criticality_Level, CL)));
    
+   --------------------
+   --  TTS_Put_Line  --
+   --------------------
+
+   procedure TTS_Put_Line (Item : in  String) is
+   begin
+      if Debug then 
+         Put_Line (Item);
+      end if;
+   end TTS_Put_Line;
+
+   
    ----------------
    --  Set_Plan  --
    ----------------
@@ -241,7 +253,7 @@ package body XAda.Dispatching.TTS is
    procedure Set_System_Criticality_Level
      (New_Level : Criticality_Levels) is 
    begin
-      Put_Line ("## CL change " & Current_Criticality_Level'Image & " -> " & New_Level'Image);
+      TTS_Put_Line ("## CL change " & Current_Criticality_Level'Image & " -> " & New_Level'Image);
       Current_Criticality_Level := New_Level;
    end Set_System_Criticality_Level;
       
@@ -783,11 +795,11 @@ package body XAda.Dispatching.TTS is
               Current_Work_Slot.Slot_Duration;
             
             if End_Of_Work_Release > Next_Slot_Release then                  
-                  raise Program_Error
-                    with ("Work duration is beyond slot duration for Work_Id " &
-                            Current_Work_Slot.Work_Id'Image & 
-                            " Slot Index " & 
-                            Current_Slot_Index'Image);
+               raise Program_Error
+                 with ("Work duration is beyond slot duration for Work_Id " &
+                         Current_Work_Slot.Work_Id'Image & 
+                         " Slot Index " & 
+                         Current_Slot_Index'Image);
             end if;
             --  Reschedule event can only be emitted from an EoW handler 
             End_Of_Work_Event.Set_Handler (End_Of_Work_Release - Overhead,
@@ -804,7 +816,7 @@ package body XAda.Dispatching.TTS is
             raise Program_Error 
               with ("Overrun in TT task " &
                       Current_Work_Slot.Work_Id'Image & " @ CL " &
-                   Current_Criticality_Level'Image);
+                      Current_Criticality_Level'Image);
          end if;
          
       end Reschedule_Handler;        
@@ -822,11 +834,6 @@ package body XAda.Dispatching.TTS is
          Current_Thread_Id : Thread_Id;
          Scheduling_Point  : Scheduling_Point_Type;
          Now               : Time;
-
-         --  Auxiliary for printing times --
-         function Length (T : Time_Span) return String is
-           (Duration'Image (To_Duration (T) * 1000) & " ms ");
-
       begin
 
          --  This is the current time, according to the plan
@@ -871,20 +878,19 @@ package body XAda.Dispatching.TTS is
             --  Process an Empty_Slot  --
             -----------------------------
             
-            Put_Line ("<EE:" &
-                        (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
-                        ">  Slot: " & Current_Slot_Index'Image);
-            null;
+            TTS_Put_Line ("<EE:" &
+                          (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
+                            ">  Slot: " & Current_Slot_Index'Image);
             
          elsif Current_Slot.all in Mode_Change_Slot'Class then
             ----------------------------------
             --  Process a Mode_Change_Slot  --
             ----------------------------------
-
-            Put_Line ("<MM:" &  
-                        (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
-                        ">  Slot: " & Current_Slot_Index'Image & 
-                        " CL: " & Current_Slot.Criticality_Level'Image);
+            
+            TTS_Put_Line ("<MM:" &  
+                          (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
+                            ">  Slot: " & Current_Slot_Index'Image & 
+                            " CL: " & Current_Slot.Criticality_Level'Image);
 
             if Next_Plan /= null and then 
               Current_Slot.Criticality_Level >= Current_Criticality_Level then
@@ -927,10 +933,10 @@ package body XAda.Dispatching.TTS is
                Current_SCB.Is_Active := WCB (Current_Sync_Slot.Sequence_Id).Is_Active;
             end if;
 
-            Put_Line ("<S" & Current_Sync_Slot.Sync_Id'Image & ": " & 
-                        (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
-                        "> Slot: " & Current_Slot_Index'Image & 
-                        " Active: " & Current_SCB.Is_Active'Image);
+            TTS_Put_Line ("<S" & Current_Sync_Slot.Sync_Id'Image & ": " & 
+                          (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
+                            "> Slot: " & Current_Slot_Index'Image & 
+                            " Active: " & Current_SCB.Is_Active'Image);
 
             if Current_SCB.Is_Active then
                Current_SCB.Last_Release := Now;
@@ -955,14 +961,32 @@ package body XAda.Dispatching.TTS is
                  (Current_Work_Slot.Criticality_Level >= Current_Criticality_Level and  
                     Current_Work_Slot.Work_Duration (Current_WCB.Criticality_Level) > Time_Span_Zero);
                
+               if Current_Work_Slot.all in Optional_Slot'Class and then 
+                 Any_Optional_Slot(Current_Work_Slot).In_Work_Sequence then
+                  -- It is an optional slot and part of a work sequence, 
+                  --  so it sets the CL and active status of the work sequence 
+                  
+                  WCB (Any_Optional_Slot(Current_Work_Slot).Sequence_Id).Is_Active := 
+                    Current_WCB.Is_Active;
+                  WCB (Any_Optional_Slot(Current_Work_Slot).Sequence_Id).Criticality_Level := 
+                    Current_WCB.Criticality_Level;
+               end if;
+            elsif Current_Work_Slot.all in Optional_Slot'Class and then 
+              Any_Optional_Slot(Current_Work_Slot).In_Work_Sequence then
+               -- It is in a work sequence, so it inherits the CL and active status from 
+               --  the work sequence 
+               Current_WCB.Is_Active := 
+                 WCB (Any_Optional_Slot(Current_Work_Slot).Sequence_Id).Is_Active;
+               Current_WCB.Criticality_Level := 
+                 WCB (Any_Optional_Slot(Current_Work_Slot).Sequence_Id).Criticality_Level;
             end if;
             
-            Put_Line ("<W" & Current_Work_Slot.Work_Id'Image &  ": " & 
-                        (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
-                        "> " &
-                        " Slot: " & Current_Slot_Index'Image & 
-                        " Active: " & Current_WCB.Is_Active'Image & 
-                        " Waiting: " & Current_WCB.Is_Waiting'Image);
+            TTS_Put_Line ("<W" & Current_Work_Slot.Work_Id'Image &  ": " & 
+                          (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
+                            "> " &
+                            " Slot: " & Current_Slot_Index'Image & 
+                            " Active: " & Current_WCB.Is_Active'Image & 
+                            " Waiting: " & Current_WCB.Is_Waiting'Image);
 
             if Current_WCB.Is_Active then
                               
@@ -1023,7 +1047,7 @@ package body XAda.Dispatching.TTS is
                         if Hold_Release < Now then
                            raise Program_Error 
                              with ("Invalid padding duration in Slot " &
-                               Current_Slot_Index'Image);
+                                     Current_Slot_Index'Image);
                         end if;
                      else                     
                         Scheduling_Point := End_Of_Work_Point;

@@ -22,6 +22,7 @@ generic
    Number_Of_Work_IDs : Positive;
    Number_Of_Sync_IDs : Positive := 1;
    TT_Priority        : System.Priority := System.Priority'Last;
+   Debug              : Boolean := False;
 
 package XAda.Dispatching.TTS is
 
