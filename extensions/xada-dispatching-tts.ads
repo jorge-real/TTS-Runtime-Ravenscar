@@ -73,7 +73,7 @@ package XAda.Dispatching.TTS is
          -- Indicates if this sync event is part of a work sequence
          In_Work_Sequence : Boolean := False;
          -- If In_Work_Sequence this indicates the identifier of the work
-         Work_Id          : TT_Work_Id;
+         Sequence_Id      : TT_Work_Id;
       end record;
    type Any_Sync_Slot is access all Sync_Slot'Class;
 
@@ -108,7 +108,14 @@ package XAda.Dispatching.TTS is
    type Any_Regular_Slot is access all Regular_Slot'Class;
 
    -- An optional work slot
-   type Optional_Slot is new Work_Slot with null record;
+   type Optional_Slot is new Work_Slot with
+      record
+         -- Indicates if this optional event is part of a work sequence
+         In_Work_Sequence : Boolean := False;
+         -- If In_Work_Sequence this indicates the identifier of the work
+         Sequence_Id      : TT_Work_Id;
+      end record;
+
    type Any_Optional_Slot is access all Optional_Slot'Class;
 
    -------------------

@@ -297,11 +297,7 @@ package body XAda.Dispatching.TTS is
             if Current_Plan = null then
                
                if Next_Mode_Release = End_Of_MC_Slot or else Next_Mode_Release <= Now then
-                  --  The extra 'overhead' delay is to bypass the exception we get
-                  --  if we don't add it. We still have to debug this. Note that the
-                  --  delay only affects the first mode change, because Current_Plan
-                  --  is null.               
-                  Change_Plan (Now + Milliseconds (1));
+                  Change_Plan (Now);
                else
                   Change_Plan (Next_Mode_Release);
                end if;
@@ -914,12 +910,12 @@ package body XAda.Dispatching.TTS is
                
                if Current_Sync_Slot.In_Work_Sequence then
                   --  This sync slot controls the activation of a work sequence
-                  WCB (Current_Sync_Slot.Work_Id).Criticality_Level := Current_Criticality_Level;
-                  WCB (Current_Sync_Slot.Work_Id).Is_Active := Current_SCB.Is_Active;
+                  WCB (Current_Sync_Slot.Sequence_Id).Criticality_Level := Current_Criticality_Level;
+                  WCB (Current_Sync_Slot.Sequence_Id).Is_Active := Current_SCB.Is_Active;
                end if;
             elsif Current_Sync_Slot.In_Work_Sequence then
                --  This sync slot is part of an ongoing work sequence
-               Current_SCB.Is_Active := WCB (Current_Sync_Slot.Work_Id).Is_Active;
+               Current_SCB.Is_Active := WCB (Current_Sync_Slot.Sequence_Id).Is_Active;
             end if;
 
             Put_Line ("{" & Current_Sync_Slot.Sync_Id'Image & "} " &
