@@ -809,6 +809,11 @@ package body XAda.Dispatching.TTS is
          Current_Thread_Id : Thread_Id;
          Scheduling_Point  : Scheduling_Point_Type;
          Now               : Time;
+
+         --  Auxiliary for printing times --
+         function Length (T : Time_Span) return String is
+           (Duration'Image (To_Duration (T) * 1000) & " ms ");
+
       begin
 
          --  This is the current time, according to the plan
@@ -853,7 +858,9 @@ package body XAda.Dispatching.TTS is
             --  Process an Empty_Slot  --
             -----------------------------
             
-            Put_Line ("(EE)  Slot: " & Current_Slot_Index'Image);
+            Put_Line ("<EE:" &
+                        (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
+                        ">  Slot: " & Current_Slot_Index'Image);
             null;
             
          elsif Current_Slot.all in Mode_Change_Slot'Class then
@@ -861,7 +868,9 @@ package body XAda.Dispatching.TTS is
             --  Process a Mode_Change_Slot  --
             ----------------------------------
 
-            Put_Line ("(MM)  Slot: " & Current_Slot_Index'Image & 
+            Put_Line ("<MM:" &  
+                        (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
+                        ">  Slot: " & Current_Slot_Index'Image & 
                         " CL: " & Current_Slot.Criticality_Level'Image);
 
             if Next_Plan /= null and then 
@@ -905,8 +914,9 @@ package body XAda.Dispatching.TTS is
                Current_SCB.Is_Active := WCB (Current_Sync_Slot.Work_Id).Is_Active;
             end if;
 
-            Put_Line ("{" & Current_Sync_Slot.Sync_Id'Image & "} " &
-                        " Slot: " & Current_Slot_Index'Image & 
+            Put_Line ("<S" & Current_Sync_Slot.Sync_Id'Image & ": " & 
+                        (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
+                        "> Slot: " & Current_Slot_Index'Image & 
                         " Active: " & Current_SCB.Is_Active'Image);
 
             if Current_SCB.Is_Active then
@@ -934,7 +944,9 @@ package body XAda.Dispatching.TTS is
                
             end if;
             
-            Put_Line ("<" & Current_Work_Slot.Work_Id'Image & "> " &
+            Put_Line ("<W" & Current_Work_Slot.Work_Id'Image &  ": " & 
+                        (Duration'Image (To_Duration (Current_Slot.Slot_Duration) * 1000) & " ms ") &
+                        "> " &
                         " Slot: " & Current_Slot_Index'Image & 
                         " Active: " & Current_WCB.Is_Active'Image & 
                         " Waiting: " & Current_WCB.Is_Waiting'Image);
