@@ -137,11 +137,11 @@ package body TT_Utilities is
             Sync_Slot.In_Work_Sequence := (Sequence_Id /= TTS.No_Id);
             if Sync_Slot.In_Work_Sequence then
                begin
-                  Sync_Slot.Work_Id := TTS.TT_Work_Id (Sequence_Id);
+                  Sync_Slot.Sequence_Id := TTS.TT_Work_Id (Sequence_Id);
                exception
                   when Constraint_Error =>
                      raise TTS.Plan_Error
-                     with "Invalid work Id" & Slot_Id'Image;
+                     with "Invalid work Id" & Sequence_Id'Image;
                end;
             end if;
 

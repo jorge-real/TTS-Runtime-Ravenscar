@@ -277,7 +277,7 @@ package body XAda.Dispatching.TTS is
       if WCB (Work_Id).Work_Thread_Id /= Thread_Self then
          raise Program_Error
            with ("Running Task does not correspond to Work_Id " &
-                   Current_Work_Slot.Work_Id'Image);
+                   Work_Id'Image);
       end if;
 
       return WCB (Work_Id).Criticality_Level;
