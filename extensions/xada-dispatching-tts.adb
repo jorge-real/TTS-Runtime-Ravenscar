@@ -23,6 +23,7 @@ with Ada.Tags; use Ada.Tags;
 
 pragma Warnings(Off);
   with System.BB.Threads; use System.BB.Threads;
+  with System.BB.Time;
   with System.Tasking; use System.Tasking;
   with System.TTS_Support; use System.TTS_Support;
 pragma Warnings(On);
@@ -34,7 +35,9 @@ package body XAda.Dispatching.TTS is
    --  23 and 24 us) we charge that overhead at the end of the slot, by
    --  effectively advancing the slot start time by the Overhead time.
    --  This reduces the release jitter even further for TT tasks, to about 3 us
-   Overhead : constant Time_Span := Microseconds (0); -- Microseconds (20);
+   Time_Offset : constant Time_Span := Microseconds (48); -- Microseconds (20);
+   Alarm_Jitter : constant Time_Span := Microseconds (5); 
+   Overhead : constant Time_Span := Time_Offset + Alarm_Jitter; -- Microseconds (20);
    
    --  Current Criticality Level
    Current_Criticality_Level : Criticality_Levels := Criticality_Levels'First 
@@ -846,11 +849,13 @@ package body XAda.Dispatching.TTS is
          --  Update current slot index
          Current_Slot_Index := Next_Slot_Index;
          if Current_Slot_Index = Current_Plan.all'First then
-            First_Slot_Release := Now;
             if Plan_Start_Pending then
+               Now := Event.Time_Of_Event + Time_Offset;
                First_Plan_Release := Now;
                Plan_Start_Pending := False;
             end if;
+
+            First_Slot_Release := Now;
          end if;
 
          --  Obtain next slot index. The plan is repeated circularly

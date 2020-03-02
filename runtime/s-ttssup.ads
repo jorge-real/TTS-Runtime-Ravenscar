@@ -12,5 +12,5 @@ package System.TTS_Support is
 
    function In_Protected_Action (T : System.BB.Threads.Thread_Id;
                                  Level : Natural := 0)
-                                return Boolean;
+                                 return Boolean;
 end System.TTS_Support;
