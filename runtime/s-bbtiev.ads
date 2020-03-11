@@ -91,10 +91,10 @@ private
       CPU : System.Multiprocessors.CPU;
       --  Owner of the timing event
 
-      Handler_Execution_In_Progress : Boolean := False;
+      Time_Of_Handling : System.BB.Time.Time := System.BB.Time.Time'First;
       --  To support new semantics for Time_Of_Event inside the handler
-      --  New semantics now returns the time aligned with the tick
-      --  Alarm_Handler execution
+      --  New semantics now returns the actual time when the TE are being
+      --  handled
 
    end record;
 

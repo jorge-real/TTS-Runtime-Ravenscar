@@ -310,9 +310,9 @@ package body System.BB.Timing_Events is
 
          --  Execute the handler
 
-         Event.Handler_Execution_In_Progress := True;
+         Event.Time_Of_Handling := Now;
          Handler (Event.all);
-         Event.Handler_Execution_In_Progress := False;
+         Event.Time_Of_Handling := System.BB.Time.Time'First;
 
          Event := Events_Table (CPU_Id);
       end loop;
@@ -348,11 +348,7 @@ package body System.BB.Timing_Events is
    function Time_Of_Event (Event : Timing_Event) return System.BB.Time.Time is
    begin
       if Event.Handler = null then
-         if Event.Handler_Execution_In_Progress then
-            return System.BB.Time.Last_Tick;
-         else
-            return System.BB.Time.Time'First;
-         end if;
+         return Event.Time_Of_Handling;
       else
          return Event.Timeout;
       end if;

@@ -108,9 +108,6 @@ package body System.BB.Time is
    --  The longest time we can sleep without updating the Software_Clock.
    --  Initialized by Initialize_Timers.
 
-   Last_Clock : Time := 0;
-   --  Clock of the last software clock update
-
    -----------------------
    -- Local subprograms --
    -----------------------
@@ -328,15 +325,6 @@ package body System.BB.Time is
       return Before_MSP & 0;
    end Clock;
 
-   ---------------
-   -- Last_Tick --
-   ---------------
-
-   function Last_Tick return Time is
-   begin
-      return Last_Clock;
-   end Last_Tick;
-
    -----------------
    -- Delay_Until --
    -----------------
@@ -526,7 +514,5 @@ package body System.BB.Time is
       end if;
 
       Now := Now_MSP & Now_LSP;
-
-      Last_Clock := Now;
    end Update_Clock;
 end System.BB.Time;
